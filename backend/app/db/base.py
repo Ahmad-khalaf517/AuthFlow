@@ -6,5 +6,5 @@ class Base(DeclarativeBase):
     pass
 
 
-# Import models here so Alembic's autogenerate can discover them, e.g.:
-# from app.models.user import User  # noqa: F401
+# Models must be imported wherever this metadata is used for table creation
+# or autogenerate — see alembic/env.py and tests/conftest.py.

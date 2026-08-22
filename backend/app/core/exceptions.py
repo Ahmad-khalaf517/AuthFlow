@@ -1,9 +1,20 @@
 """Custom application exceptions.
 
-TODO:
-- class AppError(Exception): base class with a `status_code` and `detail`
-- class DuplicateUserError(AppError)
-- class InvalidCredentialsError(AppError)
-- class PermissionDeniedError(AppError)
-- class UserNotFoundError(AppError)
+Raised from services/CRUD and translated to HTTP responses in
+app.middleware.error_handler.
 """
+
+
+class AppError(Exception):
+    status_code = 500
+    detail = "Internal server error"
+
+    def __init__(self, detail: str | None = None):
+        if detail is not None:
+            self.detail = detail
+        super().__init__(self.detail)
+
+
+class DuplicateEmailError(AppError):
+    status_code = 409
+    detail = "A user with this email already exists"

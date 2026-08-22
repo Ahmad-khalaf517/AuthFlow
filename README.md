@@ -106,6 +106,13 @@ alembic upgrade head
 
 ## Status
 
-Project scaffolding only — directory structure, configuration, dependency
-manifests, and test/migration wiring are in place. No endpoints, models, or
-auth logic have been implemented yet.
+- [x] Project scaffolding (structure, config, dependency manifests, test wiring)
+- [x] `User` model (soft delete, `admin`/`client` role, audit timestamps) + migration
+- [x] Pydantic validation for user fields (name, email, phone, city, age, password)
+- [x] `POST /api/v1/auth/register` — public, always creates a `client`, rejects any
+      client-supplied `type` field outright (422), hashes passwords with Argon2,
+      rejects duplicate emails (409)
+- [ ] Login / JWT issuance
+- [ ] Role-based route guards (`require_role`)
+- [ ] Admin-only user creation (choose `admin` vs `client`)
+- [ ] Profile management, pagination, filtering, analytics, soft-delete endpoints

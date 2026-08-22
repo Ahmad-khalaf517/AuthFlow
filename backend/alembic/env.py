@@ -18,8 +18,8 @@ config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Import models here so they're registered on Base.metadata before migrations run, e.g.:
-# from app.models.user import User  # noqa: F401
+# Import models here so they're registered on Base.metadata before migrations run.
+from app.models.user import User  # noqa: F401
 
 target_metadata = Base.metadata
 
