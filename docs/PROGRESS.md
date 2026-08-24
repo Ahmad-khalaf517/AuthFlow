@@ -304,11 +304,42 @@ delete confirmed via a direct DB read (row still present, `is_deleted` and
 `deleted_at` both set), and the deleted user simultaneously disappearing
 from `GET /users` and being unable to log in.
 
-## Next up (Phase 8)
+## Phase 8 — Public statistics
 
-- Public `/stats/count`, `/stats/average-age`, `/stats/top-cities` — no
-  authentication, all scoped to active (non-soft-deleted) users.
+**`GET /api/v1/stats/count`**, **`/average-age`**, **`/top-cities`**
+([`app/api/v1/endpoints/stats.py`](../backend/app/api/v1/endpoints/stats.py))
+— no authentication (no `require_role`/`get_current_user` dependency at
+all). All three are scoped to active users (`is_deleted = False`) via the
+same three aggregate queries in
+[`crud/user.py`](../backend/app/crud/user.py): `count_active`,
+`average_age_active` (rounds to 2dp; returns `0.0` rather than dividing by
+zero when there are no active users, since `AVG()` over zero rows is SQL
+`NULL`), `top_cities_active` (`GROUP BY city ORDER BY count DESC LIMIT 3`).
 
-## Later
+This replaces the original scaffold's `analytics.py` stub (which had
+guessed at admin-only `/analytics/users/summary`-style routes before the
+real spec for this part existed) — deleted rather than left dangling
+alongside the real thing, and the router registration swapped from
+`/analytics` to the spec's actual `/stats` prefix.
 
-A final testing-completeness pass against the full spec checklist.
+**Schemas** — new [`app/schemas/stats.py`](../backend/app/schemas/stats.py):
+`UserCountResponse`, `AverageAgeResponse`, `CityCount` + `TopCitiesResponse`
+— shapes match the spec's examples exactly (`{"total_users": N}`,
+`{"average_age": N}`, `{"cities": [{"city", "count"}, ...]}`).
+
+**Tests** — 8 new, 84 total passing (`tests/integration/test_stats.py`):
+all three endpoints reachable with zero auth headers; each one's zero-users
+edge case (0, 0.0, empty list — none of them error); count, average, and
+top-cities all confirmed to exclude a soft-deleted user from their figures;
+top-cities capped at 3 and ordered most-common-first.
+
+Also re-verified the app still boots and every route resolves correctly
+after removing `analytics.py` — checked via `app.openapi()['paths']` rather
+than `app.routes` directly, since included sub-router routes don't expose a
+plain `.path` attribute the same way top-level routes do.
+
+## Next up (Phase 9)
+
+A final testing-completeness pass against the full spec's section 24
+checklist, plus one comprehensive live run against the real Neon database
+covering the whole flow end-to-end.

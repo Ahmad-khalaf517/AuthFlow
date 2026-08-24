@@ -102,3 +102,27 @@ async def list_paginated(
         .limit(limit)
     )
     return list(rows.scalars().all()), total
+
+
+async def count_active(db: AsyncSession) -> int:
+    result = await db.execute(
+        select(func.count()).select_from(User).where(User.is_deleted.is_(False))
+    )
+    return result.scalar_one()
+
+
+async def average_age_active(db: AsyncSession) -> float:
+    result = await db.execute(select(func.avg(User.age)).where(User.is_deleted.is_(False)))
+    average = result.scalar_one()
+    return round(float(average), 2) if average is not None else 0.0
+
+
+async def top_cities_active(db: AsyncSession, *, limit: int = 3) -> list[tuple[str, int]]:
+    result = await db.execute(
+        select(User.city, func.count().label("count"))
+        .where(User.is_deleted.is_(False))
+        .group_by(User.city)
+        .order_by(func.count().desc())
+        .limit(limit)
+    )
+    return list(result.all())

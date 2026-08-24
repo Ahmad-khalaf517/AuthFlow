@@ -2,20 +2,36 @@
 
 A production-style authentication and user management REST API built with FastAPI.
 
-## Features (planned)
+## Features
 
 - User registration and login
-- JWT-based authentication (access + refresh tokens)
-- Password hashing (passlib / bcrypt)
-- Role-based authorization (`admin`, `client`)
+- JWT-based authentication (`Authorization: Bearer <token>`)
+- Password hashing (Argon2)
+- Role-based authorization (`admin`, `client`) via a reusable `require_role` dependency
 - Protected and public routes
 - Pydantic request/response validation
-- Pagination and filtering on list endpoints
-- Basic analytics (admin-only)
-- User profile management
+- Pagination and filtering (+ search) on the user list endpoint
+- Public statistics (active user count, average age, top cities)
+- Self-service and admin-driven user profile management
 - Soft delete
 - Centralized, consistent error handling
 - Database integration via SQLAlchemy 2.0 (async) + Alembic migrations
+
+## Route summary
+
+| Method | Endpoint                     | Access        | Purpose                              |
+|--------|-------------------------------|---------------|---------------------------------------|
+| POST   | `/api/v1/auth/register`       | Public        | Register — always creates a `client` |
+| POST   | `/api/v1/auth/login`          | Public        | Log in, receive a JWT                |
+| GET    | `/api/v1/users/me`            | Authenticated | Get own profile                      |
+| PUT    | `/api/v1/users/me`            | Authenticated | Update own profile                   |
+| POST   | `/api/v1/users`               | Admin         | Create a `client` or `admin`         |
+| GET    | `/api/v1/users`               | Admin         | List users — paginated + filtered    |
+| PUT    | `/api/v1/users/{id}`          | Admin         | Update any user, including role      |
+| DELETE | `/api/v1/users/{id}`          | Admin         | Soft-delete a user                   |
+| GET    | `/api/v1/stats/count`         | Public        | Count of active users                |
+| GET    | `/api/v1/stats/average-age`   | Public        | Average age of active users          |
+| GET    | `/api/v1/stats/top-cities`    | Public        | Top 3 cities among active users      |
 
 ## Project structure
 
@@ -27,7 +43,7 @@ AuthFlow/
 │   │   ├── core/               config, security (JWT/hashing), exceptions
 │   │   ├── api/
 │   │   │   ├── deps.py         Shared dependencies (auth guards, role checks)
-│   │   │   └── v1/endpoints/   auth, users, analytics routers
+│   │   │   └── v1/endpoints/   auth, users, stats routers
 │   │   ├── models/             SQLAlchemy ORM models
 │   │   ├── schemas/            Pydantic schemas
 │   │   ├── crud/                Database access layer
@@ -52,7 +68,7 @@ AuthFlow/
 - **Alembic** — database migrations
 - **Pydantic v2** / **pydantic-settings** — validation and config
 - **python-jose** — JWT encoding/decoding
-- **passlib[bcrypt]** — password hashing
+- **argon2-cffi** — password hashing (Argon2, used directly — not via passlib)
 - **pytest**, **pytest-asyncio**, **httpx** — testing
 
 ## Getting started
@@ -97,7 +113,7 @@ Run tests:
 pytest
 ```
 
-Run a database migration (once models exist):
+Run a database migration (after changing a model):
 
 ```bash
 alembic revision --autogenerate -m "message"
@@ -129,4 +145,5 @@ alembic upgrade head
       if the user doesn't exist, 409 on email conflict
 - [x] `DELETE /api/v1/users/{id}` — admin-only, soft delete (`is_deleted`/`deleted_at`);
       row is never removed, but disappears from listings and can no longer log in
-- [ ] Public statistics endpoints
+- [x] `GET /api/v1/stats/{count,average-age,top-cities}` — public, no auth,
+      scoped to active (non-soft-deleted) users
