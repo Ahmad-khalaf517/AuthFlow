@@ -20,12 +20,27 @@ def _connect_args() -> dict:
     return {}
 
 
+def _pool_kwargs() -> dict:
+    """Pool sizing only applies to Postgres. SQLite (the zero-config local
+    fallback, never used in production) uses a different default pool class
+    that doesn't accept these kwargs at all.
+    """
+    if make_url(settings.DATABASE_URL).get_backend_name() == "postgresql":
+        return {
+            "pool_size": settings.DB_POOL_SIZE,
+            "max_overflow": settings.DB_MAX_OVERFLOW,
+            "pool_recycle": settings.DB_POOL_RECYCLE_SECONDS,
+        }
+    return {}
+
+
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=settings.DEBUG,
     future=True,
     pool_pre_ping=True,  # guards against stale connections after Neon's idle auto-suspend
     connect_args=_connect_args(),
+    **_pool_kwargs(),
 )
 
 AsyncSessionLocal = async_sessionmaker(

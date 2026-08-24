@@ -43,3 +43,8 @@ class PermissionDeniedError(AppError):
 class UserNotFoundError(AppError):
     status_code = 404
     detail = "User not found"
+
+
+class ServiceUnavailableError(AppError):
+    status_code = 503
+    detail = "Service temporarily unavailable"
