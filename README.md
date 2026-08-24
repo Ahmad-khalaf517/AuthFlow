@@ -153,8 +153,15 @@ alembic upgrade head
       row is never removed, but disappears from listings and can no longer log in
 - [x] `GET /api/v1/stats/{count,average-age,top-cities}` — public, no auth,
       scoped to active (non-soft-deleted) users
+- [x] Architecture/production-readiness audit — see [`docs/AUDIT.md`](docs/AUDIT.md).
+      Fixed: password hashing was blocking the event loop, JWTs stayed valid after
+      a password change, inconsistent error responses, a health check that didn't
+      check anything, an unconfigurable connection pool, dead code/dependencies,
+      and a coverage-measurement bug that was silently hiding real coverage
 
-Full spec implemented. 84 automated tests passing (`pytest`), plus a
-comprehensive live pass against the real Neon database exercising the
-entire flow end-to-end. Not implemented (not in scope): a frontend, JWT
-refresh tokens, rate limiting.
+Full spec implemented. 95 automated tests passing (`pytest`), 96% coverage,
+plus a comprehensive live pass against the real Neon database exercising
+the entire flow end-to-end after every phase. Not implemented (documented
+in `docs/AUDIT.md`, out of scope): a frontend, JWT refresh tokens, rate
+limiting, observability/structured logging, security headers, CI, and
+containerization.

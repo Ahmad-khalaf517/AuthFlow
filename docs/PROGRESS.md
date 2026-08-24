@@ -378,12 +378,46 @@ from a stats endpoint; the fix was cleaning up the row, not the code. All
 test data (the stray row included) has been deleted — the `users` table in
 Neon is empty as of this commit.
 
+## Phase 10 — Architecture & production-readiness audit
+
+Full senior-level review of the codebase as it stood after Phase 9:
+structure, performance, memory/resource handling, dependency hygiene, test
+coverage. Full write-up in [`docs/AUDIT.md`](AUDIT.md); summary of what
+came out of it, across four commits (`1cb9ecb` → `db38433`):
+
+- **Performance**: password hashing was blocking the entire event loop —
+  Argon2 is deliberately expensive, and it was being called synchronously
+  from `async def` handlers, stalling every other in-flight request for
+  the duration. Measured 428ms worst-case delay to an unrelated request
+  before the fix, 22ms after wrapping it in `asyncio.to_thread`.
+- **Security**: a password change didn't invalidate previously issued
+  JWTs — a stolen token stayed valid until natural expiry even after the
+  legitimate user changed their password. Fixed with a `token_version`
+  column, bumped on password change, embedded in and checked against the
+  token.
+- **Reliability**: added a catch-all exception handler (unhandled
+  exceptions were falling through to Starlette's plain-text default,
+  inconsistent with every other error response), made `/health` actually
+  check the database instead of returning a hardcoded response, made the
+  connection pool configurable, added a shutdown hook to dispose it
+  cleanly, and made the app refuse to start with the default `SECRET_KEY`
+  outside of development.
+- **Hygiene**: removed three dead stub files, two unused dependencies, and
+  one dead config setting. Wired up `pytest-cov` (installed but never
+  invoked) and in the process found coverage.py was silently
+  under-reporting everything downstream of an `await db.execute(...)` call
+  due to an untraced greenlet-switch gap — real coverage is 96%, not the
+  ~86% the unfixed config showed.
+
 ## Status
 
 All 24 spec sections implemented: registration, login, JWT auth,
 role-based authorization, admin user creation, client self-service
 profile, admin user management (list/update/soft-delete) with pagination +
-filtering, public statistics, and centralized error handling. 84 automated
-tests passing, plus the live verification above. Not implemented (out of
-spec scope, not attempted): a frontend, JWT refresh tokens, and rate
-limiting.
+filtering, public statistics, and centralized error handling, plus the
+Phase 10 hardening above. 95 automated tests passing, 96% coverage, plus
+live verification against the real Neon database after every phase. Not
+implemented (documented in `docs/AUDIT.md`, out of scope, not attempted):
+a frontend, JWT refresh tokens, rate limiting, structured/observability
+logging, security headers middleware, trigram indexes for the partial-match
+filters, CI, and containerization.
