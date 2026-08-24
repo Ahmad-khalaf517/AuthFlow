@@ -338,8 +338,52 @@ after removing `analytics.py` — checked via `app.openapi()['paths']` rather
 than `app.routes` directly, since included sub-router routes don't expose a
 plain `.path` attribute the same way top-level routes do.
 
-## Next up (Phase 9)
+## Phase 9 — Testing completeness pass + full live verification
 
-A final testing-completeness pass against the full spec's section 24
-checklist, plus one comprehensive live run against the real Neon database
-covering the whole flow end-to-end.
+No new code. Two things: checked the automated suite against every item in
+the spec's testing checklist, and ran one comprehensive live pass against
+the real Neon database covering the entire flow in sequence.
+
+**Coverage check** — every item maps to an existing test, no gaps found:
+
+| Area | Covered by |
+|---|---|
+| Registration (success, invalid email/phone/age, empty names, duplicate, `type=admin` attempt, always-`client`) | `test_auth_register.py`, `test_user_schemas.py` |
+| Login (success, wrong password, unknown email, soft-deleted) | `test_auth_login.py` |
+| Authentication (no/invalid/expired JWT) | `test_users_me.py` |
+| Authorization (admin OK, client blocked, client can't modify another user, client can't change own role) | `test_require_role.py`, `test_admin_create_user.py`, `test_admin_update_delete_user.py`, `test_users_me_update.py` |
+| Client profile (get, update, update password, role-change attempt) | `test_users_me.py`, `test_users_me_update.py` |
+| Admin user management (create client/admin, list, pagination, filtering, combined, update, role change, soft-delete) | `test_admin_create_user.py`, `test_admin_list_users.py`, `test_admin_update_delete_user.py` |
+| Soft delete (excluded from listing, blocked from login, excluded from stats, row still in DB) | `test_admin_update_delete_user.py`, `test_auth_login.py`, `test_stats.py` |
+| Statistics (count, average age, top 3 cities) | `test_stats.py` |
+
+**Live end-to-end run against Neon** (20 checks, one continuous flow, all
+passing): register admin candidate and a client → registration blocks a
+`type=admin` injection attempt (422) → client logs in, views their own
+profile, is blocked from `GET /users` (403) and from changing their own
+role (422), updates their own city → the account is promoted to admin
+directly in Neon and logs in again → admin creates a client and an admin →
+filters the list by city, paginates with `limit=2`, combines `type` +
+`city` filters → promotes the new client to admin via `PUT /users/{id}` →
+soft-deletes the new admin via `DELETE /users/{id}` → confirms they're
+gone from the listing and can no longer log in (403) → `PUT` on a
+nonexistent id returns 404 → public `/stats/count` and `/stats/top-cities`
+both reachable with zero auth headers and reflect the current state.
+
+One real finding, not a code bug: a stray row (`user@example.com`, city
+`Tyre`) turned up in Neon, left over from much earlier in this session — my
+per-session cleanup had missed it. `/stats/count` and `/stats/top-cities`
+were both correctly including it, which is exactly the behavior you'd want
+from a stats endpoint; the fix was cleaning up the row, not the code. All
+test data (the stray row included) has been deleted — the `users` table in
+Neon is empty as of this commit.
+
+## Status
+
+All 24 spec sections implemented: registration, login, JWT auth,
+role-based authorization, admin user creation, client self-service
+profile, admin user management (list/update/soft-delete) with pagination +
+filtering, public statistics, and centralized error handling. 84 automated
+tests passing, plus the live verification above. Not implemented (out of
+spec scope, not attempted): a frontend, JWT refresh tokens, and rate
+limiting.

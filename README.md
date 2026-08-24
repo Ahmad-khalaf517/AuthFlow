@@ -147,3 +147,8 @@ alembic upgrade head
       row is never removed, but disappears from listings and can no longer log in
 - [x] `GET /api/v1/stats/{count,average-age,top-cities}` — public, no auth,
       scoped to active (non-soft-deleted) users
+
+Full spec implemented. 84 automated tests passing (`pytest`), plus a
+comprehensive live pass against the real Neon database exercising the
+entire flow end-to-end. Not implemented (not in scope): a frontend, JWT
+refresh tokens, rate limiting.
