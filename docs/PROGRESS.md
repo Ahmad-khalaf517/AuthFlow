@@ -213,12 +213,45 @@ an anonymous request gets 401; promoted the same user to admin directly in
 Neon; logged in again and successfully created both a new admin and a new
 client. Test rows removed afterward.
 
-## Next up (Phase 5)
+## Phase 5 — Client profile self-update
 
-- `PUT /me` (update own profile).
-- `GET /users` (admin-only, paginated + filtered list).
-- `GET /users/{id}`, `DELETE /users/{id}` (admin-only; soft delete).
+**`PUT /api/v1/users/me`** ([`app/api/v1/endpoints/users.py`](../backend/app/api/v1/endpoints/users.py))
+— authenticated, partial update. `UserUpdate`
+([`app/schemas/user.py`](../backend/app/schemas/user.py)) has every field
+optional and, like `UserCreate`, no `type` field at all plus
+`extra="forbid"` — a client attempting `{"type": "admin"}` gets a flat 422,
+same defense as public registration.
+
+Field validators (`_not_blank`, `_valid_phone`, `_valid_password`) got
+pulled out to module-level functions so `UserBase`'s required-field
+validators and `UserUpdate`'s optional-field validators share the actual
+rule instead of copy-pasting the regex checks.
+
+**Service** ([`app/services/user_service.py::update_own_profile`](../backend/app/services/user_service.py))
+— reads only the fields the caller actually sent via
+`user_in.model_dump(exclude_unset=True)` (not `is not None`, since none of
+these fields are meant to ever be nulled out — omission means "leave
+alone," not "clear"). Duplicate-email check excludes the caller's own
+current row (`existing.id != current_user.id`), so resubmitting your own
+unchanged email doesn't false-positive as a conflict. Password gets
+re-hashed only if present in the update.
+
+**`crud/user.py::update`** — generic partial-update helper (`setattr` per
+field, commit, same `IntegrityError → DuplicateEmailError` race-condition
+guard as `create`). `updated_at` refreshes automatically via the model's
+`onupdate=func.now()`.
+
+**Tests** — 7 new, 52 total passing (`tests/integration/test_users_me_update.py`):
+partial field update, password change followed by old-password-fails/
+new-password-succeeds login, role-change attempt (422) confirmed not
+applied, duplicate email (409), resubmitting own email (200, not a
+conflict), invalid data (422), unauthenticated (401).
+
+## Next up (Phase 6)
+
+- `GET /users` (admin-only, pagination + filtering + search).
 
 ## Later
 
-Basic analytics per the original spec — not yet started.
+`PUT /users/{id}`, `DELETE /users/{id}` (admin), public `/stats/*`
+endpoints, per the original spec — not yet started.

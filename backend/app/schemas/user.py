@@ -13,6 +13,25 @@ _PASSWORD_LETTER_RE = re.compile(r"[A-Za-z]")
 _PASSWORD_DIGIT_RE = re.compile(r"\d")
 
 
+def _not_blank(value: str) -> str:
+    value = value.strip()
+    if not value:
+        raise ValueError("must not be empty")
+    return value
+
+
+def _valid_phone(value: str) -> str:
+    if not _PHONE_RE.match(value):
+        raise ValueError("must be a valid phone number, e.g. +96170123456")
+    return value
+
+
+def _valid_password(value: str) -> str:
+    if not _PASSWORD_LETTER_RE.search(value) or not _PASSWORD_DIGIT_RE.search(value):
+        raise ValueError("password must contain at least one letter and one number")
+    return value
+
+
 class UserBase(BaseModel):
     first_name: Annotated[str, Field(min_length=1, max_length=100)]
     last_name: Annotated[str, Field(min_length=1, max_length=100)]
@@ -24,17 +43,12 @@ class UserBase(BaseModel):
     @field_validator("first_name", "last_name", "city")
     @classmethod
     def not_blank(cls, value: str) -> str:
-        value = value.strip()
-        if not value:
-            raise ValueError("must not be empty")
-        return value
+        return _not_blank(value)
 
     @field_validator("phone_number")
     @classmethod
     def valid_phone(cls, value: str) -> str:
-        if not _PHONE_RE.match(value):
-            raise ValueError("must be a valid phone number, e.g. +96170123456")
-        return value
+        return _valid_phone(value)
 
 
 class UserCreate(UserBase):
@@ -52,9 +66,7 @@ class UserCreate(UserBase):
     @field_validator("password")
     @classmethod
     def valid_password(cls, value: str) -> str:
-        if not _PASSWORD_LETTER_RE.search(value) or not _PASSWORD_DIGIT_RE.search(value):
-            raise ValueError("password must contain at least one letter and one number")
-        return value
+        return _valid_password(value)
 
 
 class UserCreateByAdmin(UserCreate):
@@ -66,6 +78,43 @@ class UserCreateByAdmin(UserCreate):
     """
 
     type: UserRole
+
+
+class UserUpdate(BaseModel):
+    """Partial self-service profile update (PUT /users/me).
+
+    Every field is optional — only what's provided gets changed (callers
+    read this via `model_dump(exclude_unset=True)`, not by checking for
+    None, since none of these fields are meant to ever be nulled out).
+    Deliberately has no `type` field, same as UserCreate: a client can never
+    change their own role, and `extra="forbid"` rejects the attempt outright
+    rather than silently ignoring it.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    first_name: Annotated[str, Field(min_length=1, max_length=100)] | None = None
+    last_name: Annotated[str, Field(min_length=1, max_length=100)] | None = None
+    email: EmailStr | None = None
+    phone_number: Annotated[str, Field(min_length=8, max_length=20)] | None = None
+    city: Annotated[str, Field(min_length=1, max_length=100)] | None = None
+    age: Annotated[int, Field(gt=0, le=120)] | None = None
+    password: Annotated[str, Field(min_length=8, max_length=128)] | None = None
+
+    @field_validator("first_name", "last_name", "city")
+    @classmethod
+    def not_blank(cls, value: str | None) -> str | None:
+        return value if value is None else _not_blank(value)
+
+    @field_validator("phone_number")
+    @classmethod
+    def valid_phone(cls, value: str | None) -> str | None:
+        return value if value is None else _valid_phone(value)
+
+    @field_validator("password")
+    @classmethod
+    def valid_password(cls, value: str | None) -> str | None:
+        return value if value is None else _valid_password(value)
 
 
 class UserRead(UserBase):

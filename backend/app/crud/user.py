@@ -35,3 +35,16 @@ async def create(db: AsyncSession, **fields) -> User:
         raise DuplicateEmailError() from None
     await db.refresh(user)
     return user
+
+
+async def update(db: AsyncSession, user: User, **fields) -> User:
+    for key, value in fields.items():
+        setattr(user, key, value)
+    try:
+        await db.commit()
+    except IntegrityError:
+        # Same email race as create(), but for a concurrent email change.
+        await db.rollback()
+        raise DuplicateEmailError() from None
+    await db.refresh(user)
+    return user

@@ -1,9 +1,8 @@
 """User management endpoints — protected routes.
 
 TODO:
-- PUT    /me                (update own profile)
 - GET    /                  (admin only; paginated + filtered list)
-- GET    /{user_id}         (admin only)
+- PUT    /{user_id}         (admin only)
 - DELETE /{user_id}         (admin only; soft delete)
 """
 from fastapi import APIRouter, Depends, status
@@ -11,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db, require_role
 from app.models.user import User, UserRole
-from app.schemas.user import UserCreateByAdmin, UserRead
+from app.schemas.user import UserCreateByAdmin, UserRead, UserUpdate
 from app.services import user_service
 
 router = APIRouter()
@@ -20,6 +19,15 @@ router = APIRouter()
 @router.get("/me", response_model=UserRead)
 async def read_current_user(current_user: User = Depends(get_current_user)) -> UserRead:
     return current_user
+
+
+@router.put("/me", response_model=UserRead)
+async def update_current_user(
+    user_in: UserUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> UserRead:
+    return await user_service.update_own_profile(db, current_user, user_in)
 
 
 @router.post(

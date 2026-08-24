@@ -120,4 +120,7 @@ alembic upgrade head
       every request rather than trusted from the token
 - [x] `POST /api/v1/users` — admin-only (`require_role`), lets an admin create either
       an `admin` or a `client`; non-admins get 403, unauthenticated gets 401
-- [ ] Profile management, pagination, filtering, analytics, soft-delete endpoints
+- [x] `PUT /api/v1/users/me` — authenticated, partial self-update; role-protected
+      the same way as registration (no `type` field, `extra="forbid"`)
+- [ ] Admin: paginated/filtered user listing, update-any-user, soft-delete
+- [ ] Public statistics endpoints
