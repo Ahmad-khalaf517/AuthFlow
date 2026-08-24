@@ -1,11 +1,13 @@
 """Integration tests for GET /api/v1/users/me — the get_current_user dependency."""
 import time
+import uuid
 
 import pytest
 from jose import jwt
 from sqlalchemy import select
 
 from app.core.config import settings
+from app.core.security import create_access_token
 from app.models.user import User
 from tests.conftest import TestSessionLocal
 
@@ -67,6 +69,18 @@ async def test_me_rejects_expired_token(client):
     )
 
     response = await client.get(ME_URL, headers={"Authorization": f"Bearer {expired}"})
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_me_rejects_token_for_nonexistent_user(client):
+    """A well-formed, correctly signed, unexpired token whose subject
+    doesn't match any real user (e.g. a hard-deleted account) -- distinct
+    from the soft-deleted case below, which does find a user row.
+    """
+    token = create_access_token(subject=str(uuid.uuid4()), token_version=1)
+
+    response = await client.get(ME_URL, headers={"Authorization": f"Bearer {token}"})
     assert response.status_code == 401
 
 

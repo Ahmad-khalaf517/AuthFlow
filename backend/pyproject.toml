@@ -2,6 +2,22 @@
 asyncio_mode = "auto"
 testpaths = ["tests"]
 
+[tool.coverage.run]
+source = ["app"]
+branch = true
+# SQLAlchemy's async engine bridges to sync DB-API calls via greenlet
+# switches internally; without this, coverage.py's tracer doesn't follow
+# execution across those switches and silently under-reports everything
+# that runs immediately after an `await db.execute(...)`-style call.
+concurrency = ["greenlet", "thread"]
+
+[tool.coverage.report]
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+]
+
 [tool.ruff]
 line-length = 100
 target-version = "py311"

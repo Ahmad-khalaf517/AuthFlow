@@ -113,6 +113,12 @@ Run tests:
 pytest
 ```
 
+Run tests with a coverage report:
+
+```bash
+pytest --cov=app --cov-report=term-missing
+```
+
 Run a database migration (after changing a model):
 
 ```bash
