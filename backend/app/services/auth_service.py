@@ -25,14 +25,14 @@ async def register_user(db: AsyncSession, user_in: UserCreate) -> User:
         phone_number=user_in.phone_number,
         city=user_in.city,
         age=user_in.age,
-        hashed_password=get_password_hash(user_in.password),
+        hashed_password=await get_password_hash(user_in.password),
         type=UserRole.CLIENT,
     )
 
 
 async def login(db: AsyncSession, credentials: LoginRequest) -> Token:
     user = await user_crud.get_by_email(db, credentials.email)
-    if user is None or not verify_password(credentials.password, user.hashed_password):
+    if user is None or not await verify_password(credentials.password, user.hashed_password):
         # Same error for "no such user" and "wrong password" — a distinct
         # message for either would let a caller enumerate registered emails.
         raise InvalidCredentialsError()

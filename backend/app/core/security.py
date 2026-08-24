@@ -1,4 +1,5 @@
 """Password hashing and JWT helpers."""
+import asyncio
 from datetime import UTC, datetime, timedelta
 
 from argon2 import PasswordHasher
@@ -11,15 +12,29 @@ from app.core.config import settings
 _hasher = PasswordHasher()
 
 
-def get_password_hash(password: str) -> str:
+def _hash_password_sync(password: str) -> str:
     return _hasher.hash(password)
 
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
+def _verify_password_sync(plain_password: str, hashed_password: str) -> bool:
     try:
         return _hasher.verify(hashed_password, plain_password)
     except VerifyMismatchError:
         return False
+
+
+async def get_password_hash(password: str) -> str:
+    """Argon2 is deliberately CPU-expensive (that's what makes it resistant
+    to brute-forcing) — tens of milliseconds per call. Called directly from
+    an async def, that would block the single-threaded event loop for the
+    duration, stalling every other in-flight request on this worker. Runs
+    in a thread instead so the loop stays free.
+    """
+    return await asyncio.to_thread(_hash_password_sync, password)
+
+
+async def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return await asyncio.to_thread(_verify_password_sync, plain_password, hashed_password)
 
 
 def create_access_token(subject: str) -> str:

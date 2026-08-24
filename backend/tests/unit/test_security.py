@@ -9,15 +9,17 @@ from app.core.config import settings
 from app.core.security import create_access_token, decode_token, get_password_hash, verify_password
 
 
-def test_password_hash_round_trips():
-    hashed = get_password_hash("Password123")
+@pytest.mark.asyncio
+async def test_password_hash_round_trips():
+    hashed = await get_password_hash("Password123")
     assert hashed != "Password123"
-    assert verify_password("Password123", hashed)
+    assert await verify_password("Password123", hashed)
 
 
-def test_wrong_password_fails_verification():
-    hashed = get_password_hash("Password123")
-    assert not verify_password("SomethingElse123", hashed)
+@pytest.mark.asyncio
+async def test_wrong_password_fails_verification():
+    hashed = await get_password_hash("Password123")
+    assert not await verify_password("SomethingElse123", hashed)
 
 
 def test_access_token_carries_subject_and_expiry():

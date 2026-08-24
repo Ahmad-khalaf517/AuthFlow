@@ -26,7 +26,7 @@ async def create_user_as_admin(db: AsyncSession, user_in: UserCreateByAdmin) -> 
         phone_number=user_in.phone_number,
         city=user_in.city,
         age=user_in.age,
-        hashed_password=get_password_hash(user_in.password),
+        hashed_password=await get_password_hash(user_in.password),
         type=user_in.type,
     )
 
@@ -45,7 +45,7 @@ async def update_own_profile(db: AsyncSession, current_user: User, user_in: User
             raise DuplicateEmailError()
 
     if "password" in updates:
-        updates["hashed_password"] = get_password_hash(updates.pop("password"))
+        updates["hashed_password"] = await get_password_hash(updates.pop("password"))
 
     return await user_crud.update(db, current_user, **updates)
 
@@ -68,7 +68,7 @@ async def admin_update_user(db: AsyncSession, user_id: UUID, user_in: UserAdminU
             raise DuplicateEmailError()
 
     if "password" in updates:
-        updates["hashed_password"] = get_password_hash(updates.pop("password"))
+        updates["hashed_password"] = await get_password_hash(updates.pop("password"))
 
     return await user_crud.update(db, target, **updates)
 
