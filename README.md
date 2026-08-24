@@ -118,5 +118,6 @@ alembic upgrade head
 - [x] Reusable auth dependencies (`get_current_user`, `require_role`) + `GET /api/v1/users/me`
       as the first protected route — role/soft-delete state is re-checked from the DB on
       every request rather than trusted from the token
-- [ ] Admin-only user creation (choose `admin` vs `client`)
+- [x] `POST /api/v1/users` — admin-only (`require_role`), lets an admin create either
+      an `admin` or a `client`; non-admins get 403, unauthenticated gets 401
 - [ ] Profile management, pagination, filtering, analytics, soft-delete endpoints

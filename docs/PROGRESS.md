@@ -179,13 +179,46 @@ works end-to-end; `PUT /me` and the rest of user management are still TODO.
   the token (200, correct profile), no token (401), garbage token (401).
   Test data removed afterward.
 
-## Next up (Phase 4)
+## Phase 4 — Admin user creation
 
-- Admin-only user creation (`POST /users` or similar — choose `admin` vs
-  `client` explicitly; now unblocked by `require_role`).
+**`POST /api/v1/users`** ([`app/api/v1/endpoints/users.py`](../backend/app/api/v1/endpoints/users.py))
+— gated by `dependencies=[Depends(require_role(UserRole.ADMIN))]` at the
+route level (the handler itself doesn't need the admin's identity, just the
+guard, so it's not taken as a function parameter). Unlike public
+registration, the caller explicitly chooses `type` — that's only safe
+because an unauthenticated or non-admin caller can never reach this
+function in the first place; `create_user_as_admin` itself does no role
+re-checking, the route already did it.
+
+**Schema** ([`app/schemas/user.py`](../backend/app/schemas/user.py)) —
+`UserCreateByAdmin(UserCreate)` adds a required `type: UserRole` field on
+top of everything `UserCreate` already validates (names, email, phone, age,
+password strength, `extra="forbid"`).
+
+**Service** ([`app/services/user_service.py`](../backend/app/services/user_service.py))
+— `create_user_as_admin`: duplicate-email check, hash password, insert with
+the caller-supplied `type`. Deliberately *not* factored into a shared helper
+with `auth_service.register_user` despite the near-identical shape — each
+function's role-handling (hardcoded `client` vs. trusted caller input) stays
+plainly visible top-to-bottom rather than hidden behind a shared parameter.
+
+**Tests** — 6 new, 45 total passing (`tests/integration/test_admin_create_user.py`):
+admin creates an admin (201), admin creates a client (201), a `client` role
+gets 403, no auth gets 401, duplicate email gets 409, omitting `type` gets
+422 (it's required here, unlike public registration where it's forbidden).
+
+Live-verified against the real Neon DB end-to-end: registered a user
+(comes in as `client`), confirmed that user gets 403 from `POST /users` and
+an anonymous request gets 401; promoted the same user to admin directly in
+Neon; logged in again and successfully created both a new admin and a new
+client. Test rows removed afterward.
+
+## Next up (Phase 5)
+
 - `PUT /me` (update own profile).
+- `GET /users` (admin-only, paginated + filtered list).
+- `GET /users/{id}`, `DELETE /users/{id}` (admin-only; soft delete).
 
 ## Later
 
-Paginated/filtered user listing, basic analytics, soft-delete endpoints
-(admin-facing) per the original spec — not yet started.
+Basic analytics per the original spec — not yet started.

@@ -57,6 +57,17 @@ class UserCreate(UserBase):
         return value
 
 
+class UserCreateByAdmin(UserCreate):
+    """Admin-only user creation — the caller explicitly chooses the role.
+
+    Safe only because the route requires an authenticated admin
+    (require_role(ADMIN)); this schema on its own enforces nothing about
+    who's allowed to submit it.
+    """
+
+    type: UserRole
+
+
 class UserRead(UserBase):
     model_config = ConfigDict(from_attributes=True)
 
