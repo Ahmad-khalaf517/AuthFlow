@@ -1,4 +1,6 @@
 """User CRUD operations."""
+from uuid import UUID
+
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,6 +12,14 @@ from app.models.user import User
 async def get_by_email(db: AsyncSession, email: str) -> User | None:
     result = await db.execute(select(User).where(User.email == email))
     return result.scalar_one_or_none()
+
+
+async def get_by_id(db: AsyncSession, user_id: str) -> User | None:
+    try:
+        pk = UUID(user_id)
+    except ValueError:
+        return None
+    return await db.get(User, pk)
 
 
 async def create(db: AsyncSession, **fields) -> User:

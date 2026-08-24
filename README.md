@@ -115,6 +115,8 @@ alembic upgrade head
 - [x] `POST /api/v1/auth/login` — public, verifies password, rejects soft-deleted
       accounts (403) and bad credentials (401, same message for unknown email vs
       wrong password), returns a JWT access token
-- [ ] Role-based route guards (`require_role`, `get_current_user`)
+- [x] Reusable auth dependencies (`get_current_user`, `require_role`) + `GET /api/v1/users/me`
+      as the first protected route — role/soft-delete state is re-checked from the DB on
+      every request rather than trusted from the token
 - [ ] Admin-only user creation (choose `admin` vs `client`)
 - [ ] Profile management, pagination, filtering, analytics, soft-delete endpoints

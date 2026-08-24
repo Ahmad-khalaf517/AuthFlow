@@ -132,15 +132,60 @@ dependency, not this endpoint.
   the same 401, then flipped `is_deleted` directly in Neon and confirmed
   login correctly returns 403. Test data removed afterward.
 
-## Next up (Phase 3)
+## Phase 3 — Reusable authentication & authorization
 
-- `app/api/deps.py`: `get_current_user` (decode JWT, load user, 401 if
-  invalid/expired/deleted), `require_role(*roles)`.
-- Admin-only user creation (choose `admin` vs `client` — needs the guard
-  above first; an unguarded version would defeat the registration security
-  rule).
+**`decode_token`** ([`app/core/security.py`](../backend/app/core/security.py))
+— the counterpart to `create_access_token`: decodes a JWT and returns its
+subject, raising `jose.JWTError` (covers expired and bad-signature tokens,
+both subclass it) on anything invalid.
+
+**`get_current_user`** ([`app/api/deps.py`](../backend/app/api/deps.py)) —
+*authentication*: extracts the bearer token (`HTTPBearer`, `auto_error=False`
+so a missing header goes through our own `NotAuthenticatedError` instead of
+FastAPI's default error shape), decodes it, and loads the user fresh from
+the DB by id. Trusts nothing else from the token — role and `is_deleted` are
+read from the DB on every call, not baked into the token at login time (see
+Phase 2's note on this). Missing/invalid/expired token or unknown user id →
+401; token decodes fine but the account is soft-deleted → 403
+(`AccountDeactivatedError`, reused from login).
+
+**`require_role(*roles)`** ([`app/api/deps.py`](../backend/app/api/deps.py))
+— *authorization*: a dependency factory wrapping `get_current_user`. If the
+authenticated user's `type` isn't in the allowed set, 403
+(`PermissionDeniedError`). Usage: `Depends(require_role(UserRole.ADMIN))`.
+
+**First protected route** — `GET /api/v1/users/me`
+([`app/api/v1/endpoints/users.py`](../backend/app/api/v1/endpoints/users.py)),
+gated by `get_current_user` alone (any authenticated role), returns the
+caller's own profile. Exists specifically to prove the dependency chain
+works end-to-end; `PUT /me` and the rest of user management are still TODO.
+
+**Tests** — 11 new, 39 total passing:
+- `tests/unit/test_security.py` — `decode_token` round-trips, rejects
+  expired and bad-signature tokens.
+- `tests/integration/test_users_me.py` — valid token succeeds; missing,
+  malformed, and expired tokens all 401; a token for an account that got
+  soft-deleted *after* the token was issued correctly 403s (proves the
+  "re-check the DB, don't trust the token" design actually holds).
+- `tests/integration/test_require_role.py` — since no admin-only production
+  endpoint exists yet, this mounts a throwaway `/api/v1/_test/admin-only`
+  route directly on the app (test-file-only; never touches the real app when
+  run via uvicorn) to exercise `require_role` in isolation: wrong role → 403,
+  matching role → 200, no auth at all → 401. The "matching role" case
+  promotes the user to admin *after* login, using the same
+  already-issued token — passing confirms role really is re-checked
+  per-request rather than trusted from token claims.
+- Live-verified against the real Neon DB: register → login → `GET /me` with
+  the token (200, correct profile), no token (401), garbage token (401).
+  Test data removed afterward.
+
+## Next up (Phase 4)
+
+- Admin-only user creation (`POST /users` or similar — choose `admin` vs
+  `client` explicitly; now unblocked by `require_role`).
+- `PUT /me` (update own profile).
 
 ## Later
 
-Profile management, paginated/filtered user listing, basic analytics,
-soft-delete endpoints (per the original spec — not yet started).
+Paginated/filtered user listing, basic analytics, soft-delete endpoints
+(admin-facing) per the original spec — not yet started.
