@@ -125,3 +125,11 @@ class UserRead(UserBase):
     is_deleted: bool
     created_at: datetime
     updated_at: datetime
+
+
+class UserListResponse(BaseModel):
+    page: int
+    limit: int
+    total: int
+    total_pages: int
+    users: list[UserRead]

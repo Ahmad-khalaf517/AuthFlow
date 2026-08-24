@@ -1,13 +1,13 @@
 """User management business logic.
 
-TODO: list_users (paginated/filtered), admin_update_user, admin_soft_delete_user
+TODO: admin_update_user, admin_soft_delete_user
 """
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import DuplicateEmailError
 from app.core.security import get_password_hash
 from app.crud import user as user_crud
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.schemas.user import UserCreateByAdmin, UserUpdate
 
 
@@ -49,3 +49,28 @@ async def update_own_profile(db: AsyncSession, current_user: User, user_in: User
         updates["hashed_password"] = get_password_hash(updates.pop("password"))
 
     return await user_crud.update(db, current_user, **updates)
+
+
+async def list_users(
+    db: AsyncSession,
+    *,
+    page: int,
+    limit: int,
+    first_name: str | None = None,
+    last_name: str | None = None,
+    email: str | None = None,
+    city: str | None = None,
+    age: int | None = None,
+    type: UserRole | None = None,
+) -> tuple[list[User], int]:
+    return await user_crud.list_paginated(
+        db,
+        page=page,
+        limit=limit,
+        first_name=first_name,
+        last_name=last_name,
+        email=email,
+        city=city,
+        age=age,
+        type=type,
+    )

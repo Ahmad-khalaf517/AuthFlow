@@ -247,11 +247,37 @@ new-password-succeeds login, role-change attempt (422) confirmed not
 applied, duplicate email (409), resubmitting own email (200, not a
 conflict), invalid data (422), unauthenticated (401).
 
-## Next up (Phase 6)
+## Phase 6 — Admin: list users (pagination + filtering)
 
-- `GET /users` (admin-only, pagination + filtering + search).
+**`GET /api/v1/users`** ([`app/api/v1/endpoints/users.py`](../backend/app/api/v1/endpoints/users.py))
+— admin-only, `page`/`limit` as native FastAPI `Query(...)` params
+(`page: ge=1`, `limit: ge=1, le=100`), invalid values 422 automatically.
+Optional filters: `first_name`, `last_name`, `email`, `city` (case-insensitive
+partial match — covers both "filter by city" and "search by name" with one
+mechanism), `age`, `type` (exact match — a partial match on a number or enum
+doesn't mean anything). All filters combine with AND. Soft-deleted users are
+always excluded, unconditionally — the spec allows an optional admin view of
+deleted users but doesn't require one, so I didn't add a toggle for it.
+
+**`crud/user.py::list_paginated`** — builds the filter conditions once,
+runs a `count()` query and a `limit/offset` query against the same
+conditions, returns `(rows, total)`. `total_pages = ceil(total / limit)`,
+0 when there are no matches (not 1) — computed in the endpoint, not stored.
+
+**Schema** — `UserListResponse` (`page`, `limit`, `total`, `total_pages`,
+`users`), matching the spec's example shape exactly.
+
+**Tests** — 13 new, 65 total passing (`tests/integration/test_admin_list_users.py`):
+client/anonymous blocked (403/401), full unfiltered list, pagination splits
+correctly across pages with no overlap/gaps, `page=0` and `limit=101` both
+422, each filter individually (city, type, age, partial+case-insensitive
+first_name), combined filters, filters + pagination together, and a
+soft-deleted user confirmed absent from the listing.
+
+## Next up (Phase 7)
+
+- `PUT /users/{id}`, `DELETE /users/{id}` (admin-only; soft delete).
 
 ## Later
 
-`PUT /users/{id}`, `DELETE /users/{id}` (admin), public `/stats/*`
-endpoints, per the original spec — not yet started.
+Public `/stats/*` endpoints, per the original spec — not yet started.

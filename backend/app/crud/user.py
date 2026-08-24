@@ -1,12 +1,12 @@
 """User CRUD operations."""
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import DuplicateEmailError
-from app.models.user import User
+from app.models.user import User, UserRole
 
 
 async def get_by_email(db: AsyncSession, email: str) -> User | None:
@@ -48,3 +48,48 @@ async def update(db: AsyncSession, user: User, **fields) -> User:
         raise DuplicateEmailError() from None
     await db.refresh(user)
     return user
+
+
+async def list_paginated(
+    db: AsyncSession,
+    *,
+    page: int,
+    limit: int,
+    first_name: str | None = None,
+    last_name: str | None = None,
+    email: str | None = None,
+    city: str | None = None,
+    age: int | None = None,
+    type: UserRole | None = None,
+) -> tuple[list[User], int]:
+    """Soft-deleted users are always excluded — they don't belong in a
+    normal listing. Text fields use case-insensitive partial matching
+    (covers "filter by city" and "search by name" with one mechanism);
+    age and type are exact, since a partial match makes no sense for either.
+    """
+    conditions = [User.is_deleted.is_(False)]
+    if first_name is not None:
+        conditions.append(User.first_name.ilike(f"%{first_name}%"))
+    if last_name is not None:
+        conditions.append(User.last_name.ilike(f"%{last_name}%"))
+    if email is not None:
+        conditions.append(User.email.ilike(f"%{email}%"))
+    if city is not None:
+        conditions.append(User.city.ilike(f"%{city}%"))
+    if age is not None:
+        conditions.append(User.age == age)
+    if type is not None:
+        conditions.append(User.type == type)
+
+    total = (
+        await db.execute(select(func.count()).select_from(User).where(*conditions))
+    ).scalar_one()
+
+    rows = await db.execute(
+        select(User)
+        .where(*conditions)
+        .order_by(User.created_at)
+        .offset((page - 1) * limit)
+        .limit(limit)
+    )
+    return list(rows.scalars().all()), total

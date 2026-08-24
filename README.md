@@ -122,5 +122,8 @@ alembic upgrade head
       an `admin` or a `client`; non-admins get 403, unauthenticated gets 401
 - [x] `PUT /api/v1/users/me` — authenticated, partial self-update; role-protected
       the same way as registration (no `type` field, `extra="forbid"`)
-- [ ] Admin: paginated/filtered user listing, update-any-user, soft-delete
+- [x] `GET /api/v1/users` — admin-only, `page`/`limit` pagination (validated,
+      max 100/page), filter by name/email/city (partial, case-insensitive)
+      and age/type (exact), all combinable; soft-deleted always excluded
+- [ ] Admin: update-any-user, soft-delete
 - [ ] Public statistics endpoints
