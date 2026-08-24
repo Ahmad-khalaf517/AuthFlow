@@ -46,6 +46,8 @@ async def update_own_profile(db: AsyncSession, current_user: User, user_in: User
 
     if "password" in updates:
         updates["hashed_password"] = await get_password_hash(updates.pop("password"))
+        # Invalidates every token issued before this change (see get_current_user).
+        updates["token_version"] = current_user.token_version + 1
 
     return await user_crud.update(db, current_user, **updates)
 
@@ -69,6 +71,7 @@ async def admin_update_user(db: AsyncSession, user_id: UUID, user_in: UserAdminU
 
     if "password" in updates:
         updates["hashed_password"] = await get_password_hash(updates.pop("password"))
+        updates["token_version"] = target.token_version + 1
 
     return await user_crud.update(db, target, **updates)
 

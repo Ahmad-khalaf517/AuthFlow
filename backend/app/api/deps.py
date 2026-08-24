@@ -27,20 +27,24 @@ async def get_current_user(
 ) -> User:
     """Authentication: who is making this request?
 
-    Trusts nothing from the token except the user id. Role and soft-delete
-    status are re-read from the DB on every call, so a token issued before a
-    demotion or deletion can't keep asserting stale permissions.
+    Trusts nothing from the token except the user id and the token_version
+    it was issued under. Role and soft-delete status are re-read from the
+    DB on every call, so a token issued before a demotion or deletion can't
+    keep asserting stale permissions; a mismatched token_version means the
+    password changed since this token was issued, so it's rejected too.
     """
     if credentials is None:
         raise NotAuthenticatedError()
 
     try:
-        user_id = decode_token(credentials.credentials)
+        token_payload = decode_token(credentials.credentials)
     except JWTError:
         raise NotAuthenticatedError() from None
 
-    user = await user_crud.get_by_id(db, user_id)
+    user = await user_crud.get_by_id(db, token_payload.subject)
     if user is None:
+        raise NotAuthenticatedError()
+    if user.token_version != token_payload.token_version:
         raise NotAuthenticatedError()
     if user.is_deleted:
         raise AccountDeactivatedError()

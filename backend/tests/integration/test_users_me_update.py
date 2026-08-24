@@ -74,6 +74,41 @@ async def test_update_own_password_then_login_with_new_password(client):
 
 
 @pytest.mark.asyncio
+async def test_changing_own_password_invalidates_the_old_token(client):
+    """A token stays cryptographically valid (unexpired, correctly signed)
+    after a password change -- this proves the app still rejects it anyway,
+    via the token_version check, rather than relying on natural expiry.
+    """
+    old_token = await _register_and_login(client, USER_A)
+
+    update = await client.put(
+        ME_URL, json={"password": "NewPassword456"}, headers=_auth(old_token)
+    )
+    assert update.status_code == 200
+
+    stale_request = await client.get(ME_URL, headers=_auth(old_token))
+    assert stale_request.status_code == 401
+
+    new_login = await client.post(
+        LOGIN_URL, json={"email": USER_A["email"], "password": "NewPassword456"}
+    )
+    fresh_token = new_login.json()["access_token"]
+    fresh_request = await client.get(ME_URL, headers=_auth(fresh_token))
+    assert fresh_request.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_non_password_update_does_not_invalidate_existing_token(client):
+    token = await _register_and_login(client, USER_A)
+
+    update = await client.put(ME_URL, json={"city": "Batroun"}, headers=_auth(token))
+    assert update.status_code == 200
+
+    still_valid = await client.get(ME_URL, headers=_auth(token))
+    assert still_valid.status_code == 200
+
+
+@pytest.mark.asyncio
 async def test_cannot_change_own_role(client):
     token = await _register_and_login(client, USER_A)
 

@@ -30,9 +30,16 @@ class User(Base):
         Enum(UserRole, name="user_role", values_callable=lambda role: [r.value for r in role]),
         default=UserRole.CLIENT,
         nullable=False,
+        index=True,  # GET /users filters by type; low-cardinality but real at scale
     )
 
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
+
+    # Bumped whenever the password changes; embedded in JWTs as "ver" and
+    # checked in get_current_user. Lets a password change immediately
+    # invalidate every previously issued token (e.g. a stolen one) instead
+    # of leaving them valid until natural expiry.
+    token_version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
 
     # Soft delete: is_deleted for cheap filtering, deleted_at for the audit trail.
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

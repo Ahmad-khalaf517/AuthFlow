@@ -40,5 +40,5 @@ async def login(db: AsyncSession, credentials: LoginRequest) -> Token:
     if user.is_deleted:
         raise AccountDeactivatedError()
 
-    access_token = create_access_token(subject=str(user.id))
+    access_token = create_access_token(subject=str(user.id), token_version=user.token_version)
     return Token(access_token=access_token)

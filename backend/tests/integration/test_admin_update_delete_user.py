@@ -89,6 +89,24 @@ async def test_admin_updates_user_fields(client):
 
 
 @pytest.mark.asyncio
+async def test_admin_password_change_invalidates_targets_existing_token(client):
+    admin_token = await _admin_token(client)
+    await client.post(REGISTER_URL, json=TARGET_PAYLOAD)
+    target_id = await _get_id(TARGET_PAYLOAD["email"])
+    target_token = await _login(client, TARGET_PAYLOAD)
+
+    response = await client.put(
+        f"{USERS_URL}/{target_id}",
+        json={"password": "AdminForcedNew123"},
+        headers=_auth(admin_token),
+    )
+    assert response.status_code == 200
+
+    stale_request = await client.get("/api/v1/users/me", headers=_auth(target_token))
+    assert stale_request.status_code == 401
+
+
+@pytest.mark.asyncio
 async def test_admin_promotes_client_to_admin(client):
     admin_token = await _admin_token(client)
     await client.post(REGISTER_URL, json=TARGET_PAYLOAD)
