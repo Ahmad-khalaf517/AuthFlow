@@ -274,10 +274,41 @@ correctly across pages with no overlap/gaps, `page=0` and `limit=101` both
 first_name), combined filters, filters + pagination together, and a
 soft-deleted user confirmed absent from the listing.
 
-## Next up (Phase 7)
+## Phase 7 — Admin: update & soft-delete any user
 
-- `PUT /users/{id}`, `DELETE /users/{id}` (admin-only; soft delete).
+**`PUT /api/v1/users/{user_id}`** — admin-only, `UserAdminUpdate`
+([`app/schemas/user.py`](../backend/app/schemas/user.py)) extends
+`UserUpdate` with an optional `type`, the one difference from a client's
+self-update: an admin *can* change a role through this endpoint. 404
+(`UserNotFoundError`, new in `core/exceptions.py`) if the id doesn't exist;
+409 if the new email collides with a different user; password re-hashed
+only if present, same as self-update.
+
+**`DELETE /api/v1/users/{user_id}`** — admin-only, soft delete
+(`crud/user.py::soft_delete`: sets `is_deleted=True`,
+`deleted_at=datetime.now(UTC)`, never removes the row). Returns the updated
+user (`is_deleted: true` confirms it took effect) rather than 204, so the
+caller doesn't need a separate GET to verify. 404 if the id doesn't exist.
+
+Both routes reuse `get_by_id` (unfiltered by `is_deleted`) for the lookup —
+a 404 means "never existed," not "is soft-deleted." An admin can still
+update a soft-deleted user's record directly by id (the record remains
+fully addressable), it just won't show up in `GET /users`' listing.
+
+**Tests** — 11 new, 76 total passing (`tests/integration/test_admin_update_delete_user.py`):
+field update, role change both directions (client→admin, admin→client),
+duplicate email (409), unknown id (404) for both PUT and DELETE, a client
+blocked from modifying *another* user (403 — the "client attempting to
+modify another user" authorization case), unauthenticated (401), soft
+delete confirmed via a direct DB read (row still present, `is_deleted` and
+`deleted_at` both set), and the deleted user simultaneously disappearing
+from `GET /users` and being unable to log in.
+
+## Next up (Phase 8)
+
+- Public `/stats/count`, `/stats/average-age`, `/stats/top-cities` — no
+  authentication, all scoped to active (non-soft-deleted) users.
 
 ## Later
 
-Public `/stats/*` endpoints, per the original spec — not yet started.
+A final testing-completeness pass against the full spec checklist.

@@ -1,14 +1,13 @@
-"""User management business logic.
+"""User management business logic."""
+from uuid import UUID
 
-TODO: admin_update_user, admin_soft_delete_user
-"""
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import DuplicateEmailError
+from app.core.exceptions import DuplicateEmailError, UserNotFoundError
 from app.core.security import get_password_hash
 from app.crud import user as user_crud
 from app.models.user import User, UserRole
-from app.schemas.user import UserCreateByAdmin, UserUpdate
+from app.schemas.user import UserAdminUpdate, UserCreateByAdmin, UserUpdate
 
 
 async def create_user_as_admin(db: AsyncSession, user_in: UserCreateByAdmin) -> User:
@@ -49,6 +48,37 @@ async def update_own_profile(db: AsyncSession, current_user: User, user_in: User
         updates["hashed_password"] = get_password_hash(updates.pop("password"))
 
     return await user_crud.update(db, current_user, **updates)
+
+
+async def admin_update_user(db: AsyncSession, user_id: UUID, user_in: UserAdminUpdate) -> User:
+    """Admin update of any user, including their role. Safe only because the
+    route requires require_role(ADMIN) — this function does no permission
+    checking of its own, same rationale as create_user_as_admin.
+    """
+    target = await user_crud.get_by_id(db, str(user_id))
+    if target is None:
+        raise UserNotFoundError()
+
+    updates = user_in.model_dump(exclude_unset=True)
+
+    new_email = updates.get("email")
+    if new_email is not None:
+        existing = await user_crud.get_by_email(db, new_email)
+        if existing is not None and existing.id != target.id:
+            raise DuplicateEmailError()
+
+    if "password" in updates:
+        updates["hashed_password"] = get_password_hash(updates.pop("password"))
+
+    return await user_crud.update(db, target, **updates)
+
+
+async def admin_soft_delete_user(db: AsyncSession, user_id: UUID) -> User:
+    target = await user_crud.get_by_id(db, str(user_id))
+    if target is None:
+        raise UserNotFoundError()
+
+    return await user_crud.soft_delete(db, target)
 
 
 async def list_users(

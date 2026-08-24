@@ -117,6 +117,14 @@ class UserUpdate(BaseModel):
         return value if value is None else _valid_password(value)
 
 
+class UserAdminUpdate(UserUpdate):
+    """Admin update of any user (PUT /users/{id}) — unlike UserUpdate, the
+    admin *is* allowed to change the role. Still optional/partial.
+    """
+
+    type: UserRole | None = None
+
+
 class UserRead(UserBase):
     model_config = ConfigDict(from_attributes=True)
 

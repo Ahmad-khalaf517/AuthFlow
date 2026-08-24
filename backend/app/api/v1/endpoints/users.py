@@ -1,17 +1,19 @@
-"""User management endpoints — protected routes.
-
-TODO:
-- PUT    /{user_id}         (admin only)
-- DELETE /{user_id}         (admin only; soft delete)
-"""
+"""User management endpoints — protected routes."""
 from math import ceil
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db, require_role
 from app.models.user import User, UserRole
-from app.schemas.user import UserCreateByAdmin, UserListResponse, UserRead, UserUpdate
+from app.schemas.user import (
+    UserAdminUpdate,
+    UserCreateByAdmin,
+    UserListResponse,
+    UserRead,
+    UserUpdate,
+)
 from app.services import user_service
 
 router = APIRouter()
@@ -68,3 +70,23 @@ async def list_users(
     )
     total_pages = ceil(total / limit) if total else 0
     return UserListResponse(page=page, limit=limit, total=total, total_pages=total_pages, users=users)
+
+
+@router.put(
+    "/{user_id}",
+    response_model=UserRead,
+    dependencies=[Depends(require_role(UserRole.ADMIN))],
+)
+async def admin_update_user(
+    user_id: UUID, user_in: UserAdminUpdate, db: AsyncSession = Depends(get_db)
+) -> UserRead:
+    return await user_service.admin_update_user(db, user_id, user_in)
+
+
+@router.delete(
+    "/{user_id}",
+    response_model=UserRead,
+    dependencies=[Depends(require_role(UserRole.ADMIN))],
+)
+async def admin_delete_user(user_id: UUID, db: AsyncSession = Depends(get_db)) -> UserRead:
+    return await user_service.admin_soft_delete_user(db, user_id)

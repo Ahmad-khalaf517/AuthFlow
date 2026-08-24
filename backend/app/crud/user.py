@@ -1,4 +1,5 @@
 """User CRUD operations."""
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -46,6 +47,14 @@ async def update(db: AsyncSession, user: User, **fields) -> User:
         # Same email race as create(), but for a concurrent email change.
         await db.rollback()
         raise DuplicateEmailError() from None
+    await db.refresh(user)
+    return user
+
+
+async def soft_delete(db: AsyncSession, user: User) -> User:
+    user.is_deleted = True
+    user.deleted_at = datetime.now(UTC)
+    await db.commit()
     await db.refresh(user)
     return user
 

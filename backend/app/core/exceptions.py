@@ -38,3 +38,8 @@ class NotAuthenticatedError(AppError):
 class PermissionDeniedError(AppError):
     status_code = 403
     detail = "You do not have permission to perform this action"
+
+
+class UserNotFoundError(AppError):
+    status_code = 404
+    detail = "User not found"

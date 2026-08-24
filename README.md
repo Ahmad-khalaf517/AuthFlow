@@ -125,5 +125,8 @@ alembic upgrade head
 - [x] `GET /api/v1/users` — admin-only, `page`/`limit` pagination (validated,
       max 100/page), filter by name/email/city (partial, case-insensitive)
       and age/type (exact), all combinable; soft-deleted always excluded
-- [ ] Admin: update-any-user, soft-delete
+- [x] `PUT /api/v1/users/{id}` — admin-only, can change any field including role; 404
+      if the user doesn't exist, 409 on email conflict
+- [x] `DELETE /api/v1/users/{id}` — admin-only, soft delete (`is_deleted`/`deleted_at`);
+      row is never removed, but disappears from listings and can no longer log in
 - [ ] Public statistics endpoints
