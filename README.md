@@ -112,7 +112,9 @@ alembic upgrade head
 - [x] `POST /api/v1/auth/register` — public, always creates a `client`, rejects any
       client-supplied `type` field outright (422), hashes passwords with Argon2,
       rejects duplicate emails (409)
-- [ ] Login / JWT issuance
-- [ ] Role-based route guards (`require_role`)
+- [x] `POST /api/v1/auth/login` — public, verifies password, rejects soft-deleted
+      accounts (403) and bad credentials (401, same message for unknown email vs
+      wrong password), returns a JWT access token
+- [ ] Role-based route guards (`require_role`, `get_current_user`)
 - [ ] Admin-only user creation (choose `admin` vs `client`)
 - [ ] Profile management, pagination, filtering, analytics, soft-delete endpoints

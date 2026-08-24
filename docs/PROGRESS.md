@@ -83,16 +83,62 @@ not reversed by `drop_table`) so `upgrade()` can be re-run cleanly.
 
 Commit: `1f7d82f`.
 
-## Next up (Phase 2)
+## Fix — settings' `.env` resolution (found while running the app)
 
-- Login endpoint + JWT issuance (`app/core/security.py` JWT helpers are
-  stubbed, not yet implemented).
-- `app/api/deps.py` auth dependencies: `get_current_user`,
-  `get_current_active_user`, `require_role(*roles)`.
-- Admin-only user creation (choose `admin` vs `client` — requires the role
-  guard above to exist first; deliberately not built early, since an
-  unguarded version of this endpoint would defeat the registration
-  security rule).
+Booting the app for real (not just tests) surfaced a bug: `Settings` resolved
+`.env` relative to the process's current working directory, not the backend
+package. Launched from the repo root, it silently found no `.env` and fell
+back to the default SQLite URL — registration then 500'd with
+`no such table: users` against an empty local DB the migration had never
+touched. Fixed in [`app/core/config.py`](../backend/app/core/config.py) by
+anchoring `env_file` to the config module's own location
+(`Path(__file__).resolve().parents[2]`), so it resolves the same regardless
+of the launch directory (dev server, pytest, alembic, Docker, CI).
+
+## Phase 2 — Login
+
+**JWT** ([`app/core/security.py`](../backend/app/core/security.py)) —
+`create_access_token(subject)` via `python-jose`, `HS256`, expiry from
+`settings.ACCESS_TOKEN_EXPIRE_MINUTES`. The token's `sub` claim is the
+user's UUID, not their role — role and soft-delete status get checked fresh
+against the DB wherever the token is decoded (Phase 3's `get_current_user`),
+so a demoted or deleted user's existing token can't keep asserting stale
+permissions. `decode_token` itself is still a TODO — it belongs with that
+dependency, not this endpoint.
+
+**Endpoint** — `POST /api/v1/auth/login` (public), in
+[`services/auth_service.py::login`](../backend/app/services/auth_service.py):
+1. Look up the user by email.
+2. Verify the password (Argon2) — on failure, raise the *same* error as "no
+   such user" (`InvalidCredentialsError`, 401, "Incorrect email or
+   password"). Deliberately identical for both cases, so a login attempt
+   can't be used to enumerate which emails are registered.
+3. Check `is_deleted` — a distinct `AccountDeactivatedError` (403, "This
+   account has been deactivated"), since this isn't a credentials problem
+   and a legitimate user is better served knowing their account status.
+4. Issue and return the JWT (`Token{access_token, token_type: "bearer"}`).
+
+**Schemas** ([`app/schemas/auth.py`](../backend/app/schemas/auth.py)) —
+`LoginRequest` (email + non-empty password, `extra="forbid"`), `Token`.
+
+**Tests** — 8 new, 28 total passing:
+- `tests/unit/test_security.py` — password hash round-trip, wrong password
+  rejected, JWT carries `sub` + `exp`.
+- `tests/integration/test_auth_login.py` — successful login, unknown email
+  (401), wrong password (401), soft-deleted account (403, via a direct DB
+  update since there's no delete endpoint yet), missing password (422).
+- Live-verified against the real Neon DB by hand: registered a user, logged
+  in successfully, confirmed wrong-password and unknown-email both return
+  the same 401, then flipped `is_deleted` directly in Neon and confirmed
+  login correctly returns 403. Test data removed afterward.
+
+## Next up (Phase 3)
+
+- `app/api/deps.py`: `get_current_user` (decode JWT, load user, 401 if
+  invalid/expired/deleted), `require_role(*roles)`.
+- Admin-only user creation (choose `admin` vs `client` — needs the guard
+  above first; an unguarded version would defeat the registration security
+  rule).
 
 ## Later
 
