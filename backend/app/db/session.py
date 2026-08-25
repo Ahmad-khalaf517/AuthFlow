@@ -1,4 +1,5 @@
 """Async SQLAlchemy engine and session factory."""
+
 import ssl
 from collections.abc import AsyncGenerator
 

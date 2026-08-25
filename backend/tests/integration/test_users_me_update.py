@@ -1,4 +1,5 @@
 """Integration tests for PUT /api/v1/users/me — self-service profile update."""
+
 import pytest
 
 REGISTER_URL = "/api/v1/auth/register"
@@ -42,9 +43,7 @@ def _auth(token: str) -> dict:
 async def test_update_own_profile_fields(client):
     token = await _register_and_login(client, USER_A)
 
-    response = await client.put(
-        ME_URL, json={"city": "Batroun", "age": 28}, headers=_auth(token)
-    )
+    response = await client.put(ME_URL, json={"city": "Batroun", "age": 28}, headers=_auth(token))
 
     assert response.status_code == 200
     body = response.json()
@@ -81,9 +80,7 @@ async def test_changing_own_password_invalidates_the_old_token(client):
     """
     old_token = await _register_and_login(client, USER_A)
 
-    update = await client.put(
-        ME_URL, json={"password": "NewPassword456"}, headers=_auth(old_token)
-    )
+    update = await client.put(ME_URL, json={"password": "NewPassword456"}, headers=_auth(old_token))
     assert update.status_code == 200
 
     stale_request = await client.get(ME_URL, headers=_auth(old_token))

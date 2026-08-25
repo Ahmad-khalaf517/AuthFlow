@@ -3,6 +3,7 @@
 No admin-only production endpoint exists yet, so this mounts a throwaway
 route directly on the app to exercise require_role() in isolation.
 """
+
 import pytest
 from fastapi import Depends
 from sqlalchemy import select

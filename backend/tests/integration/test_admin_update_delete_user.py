@@ -1,4 +1,5 @@
 """Integration tests for PUT/DELETE /api/v1/users/{id} — admin update & soft delete."""
+
 from uuid import UUID
 
 import pytest

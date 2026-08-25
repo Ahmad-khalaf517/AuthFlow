@@ -1,4 +1,5 @@
 """User Pydantic schemas."""
+
 import re
 from datetime import datetime
 from typing import Annotated

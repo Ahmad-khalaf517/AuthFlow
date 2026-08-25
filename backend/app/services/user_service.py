@@ -1,4 +1,5 @@
 """User management business logic."""
+
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -66,7 +67,8 @@ async def admin_update_user(
     """
     if user_id == current_admin.id:
         raise CannotTargetSelfError(
-            "Admins cannot update their own account through this endpoint. Use PUT /users/me instead."
+            "Admins cannot update their own account through this endpoint. "
+            "Use PUT /users/me instead."
         )
 
     target = await user_crud.get_by_id(db, str(user_id))

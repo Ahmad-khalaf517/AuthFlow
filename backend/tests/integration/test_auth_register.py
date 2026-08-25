@@ -1,4 +1,5 @@
 """Integration tests for POST /api/v1/auth/register."""
+
 import pytest
 
 REGISTER_URL = "/api/v1/auth/register"

@@ -2,6 +2,7 @@
 
 All figures are scoped to active (non-soft-deleted) users.
 """
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 

@@ -1,4 +1,5 @@
 """Authentication business logic."""
+
 import uuid
 
 from jose.exceptions import JWTError

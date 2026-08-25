@@ -1,4 +1,5 @@
 """Password hashing and JWT helpers."""
+
 import asyncio
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta

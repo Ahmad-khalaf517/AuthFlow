@@ -1,4 +1,5 @@
 """Integration tests for POST /api/v1/users — admin-only user creation."""
+
 import pytest
 from sqlalchemy import select
 

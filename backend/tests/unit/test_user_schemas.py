@@ -1,4 +1,5 @@
 """Unit tests for User Pydantic schemas — pure validation, no DB/HTTP."""
+
 import pytest
 from pydantic import ValidationError
 

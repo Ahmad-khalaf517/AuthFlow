@@ -1,11 +1,12 @@
 """Integration tests for POST /api/v1/auth/refresh — refresh token rotation."""
+
 import time
 
 import pytest
 from jose import jwt
 
 from app.core.config import settings
-from app.core.security import create_access_token, create_refresh_token
+from app.core.security import create_refresh_token
 
 REGISTER_URL = "/api/v1/auth/register"
 LOGIN_URL = "/api/v1/auth/login"
@@ -111,10 +112,17 @@ async def test_refresh_rejects_malformed_token(client):
 @pytest.mark.asyncio
 async def test_refresh_rejects_expired_token(client):
     tokens = await _register_and_login(client)
-    payload = jwt.decode(tokens["refresh_token"], settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+    payload = jwt.decode(
+        tokens["refresh_token"], settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+    )
     expired = jwt.encode(
-        {"sub": payload["sub"], "ver": payload["ver"], "type": "refresh", "jti": payload["jti"],
-         "exp": int(time.time()) - 60},
+        {
+            "sub": payload["sub"],
+            "ver": payload["ver"],
+            "type": "refresh",
+            "jti": payload["jti"],
+            "exp": int(time.time()) - 60,
+        },
         settings.SECRET_KEY,
         algorithm=settings.ALGORITHM,
     )
@@ -159,7 +167,9 @@ async def test_refresh_rejects_forged_token_for_user_who_never_logged_in(client)
 
 @pytest.mark.asyncio
 async def test_refresh_rejects_token_for_nonexistent_user(client):
-    forged = create_refresh_token(subject="00000000-0000-0000-0000-000000000000", token_version=1, jti="x")
+    forged = create_refresh_token(
+        subject="00000000-0000-0000-0000-000000000000", token_version=1, jti="x"
+    )
     response = await client.post(REFRESH_URL, json={"refresh_token": forged})
     assert response.status_code == 401
 

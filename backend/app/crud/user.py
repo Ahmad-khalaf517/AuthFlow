@@ -1,4 +1,5 @@
 """User CRUD operations."""
+
 from datetime import UTC, datetime
 from uuid import UUID
 

@@ -1,6 +1,7 @@
 """Unit tests for InMemoryRateLimiter -- an injectable clock keeps these
 deterministic and fast, no real sleeping.
 """
+
 import pytest
 
 from app.core.exceptions import RateLimitExceededError

@@ -4,6 +4,7 @@ No route in the real API raises a bare, unhandled exception on purpose --
 this mounts a throwaway route (test-file-only; never touches the real app
 when run via uvicorn) specifically to exercise the catch-all handler.
 """
+
 from collections.abc import AsyncGenerator
 
 import pytest

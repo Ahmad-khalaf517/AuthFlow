@@ -1,4 +1,5 @@
 """User management endpoints — protected routes."""
+
 from math import ceil
 from uuid import UUID
 
@@ -45,7 +46,9 @@ async def create_user(user_in: UserCreateByAdmin, db: AsyncSession = Depends(get
     return await user_service.create_user_as_admin(db, user_in)
 
 
-@router.get("", response_model=UserListResponse, dependencies=[Depends(require_role(UserRole.ADMIN))])
+@router.get(
+    "", response_model=UserListResponse, dependencies=[Depends(require_role(UserRole.ADMIN))]
+)
 async def list_users(
     page: int = Query(1, ge=1),
     limit: int = Query(10, ge=1, le=MAX_PAGE_LIMIT),
@@ -69,7 +72,9 @@ async def list_users(
         type=type,
     )
     total_pages = ceil(total / limit) if total else 0
-    return UserListResponse(page=page, limit=limit, total=total, total_pages=total_pages, users=users)
+    return UserListResponse(
+        page=page, limit=limit, total=total, total_pages=total_pages, users=users
+    )
 
 
 @router.put("/{user_id}", response_model=UserRead)

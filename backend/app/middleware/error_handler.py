@@ -1,4 +1,5 @@
 """Global exception handlers."""
+
 import logging
 
 from fastapi import FastAPI, Request

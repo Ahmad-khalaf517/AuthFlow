@@ -1,4 +1,5 @@
 """Public statistics schemas — all scoped to active (non-soft-deleted) users."""
+
 from pydantic import BaseModel
 
 

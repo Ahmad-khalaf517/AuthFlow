@@ -1,4 +1,5 @@
 """Integration tests for the public /api/v1/stats/* endpoints."""
+
 import pytest
 from sqlalchemy import select
 
@@ -11,16 +12,51 @@ AVG_AGE_URL = "/api/v1/stats/average-age"
 TOP_CITIES_URL = "/api/v1/stats/top-cities"
 
 USERS = [
-    {"first_name": "A", "last_name": "One", "email": "stats.a@example.com",
-     "phone_number": "+96170440001", "city": "Tripoli", "age": 20, "password": "Password123"},
-    {"first_name": "B", "last_name": "Two", "email": "stats.b@example.com",
-     "phone_number": "+96170440002", "city": "Tripoli", "age": 30, "password": "Password123"},
-    {"first_name": "C", "last_name": "Three", "email": "stats.c@example.com",
-     "phone_number": "+96170440003", "city": "Beirut", "age": 40, "password": "Password123"},
-    {"first_name": "D", "last_name": "Four", "email": "stats.d@example.com",
-     "phone_number": "+96170440004", "city": "Saida", "age": 50, "password": "Password123"},
-    {"first_name": "E", "last_name": "Five", "email": "stats.e@example.com",
-     "phone_number": "+96170440005", "city": "Jbeil", "age": 60, "password": "Password123"},
+    {
+        "first_name": "A",
+        "last_name": "One",
+        "email": "stats.a@example.com",
+        "phone_number": "+96170440001",
+        "city": "Tripoli",
+        "age": 20,
+        "password": "Password123",
+    },
+    {
+        "first_name": "B",
+        "last_name": "Two",
+        "email": "stats.b@example.com",
+        "phone_number": "+96170440002",
+        "city": "Tripoli",
+        "age": 30,
+        "password": "Password123",
+    },
+    {
+        "first_name": "C",
+        "last_name": "Three",
+        "email": "stats.c@example.com",
+        "phone_number": "+96170440003",
+        "city": "Beirut",
+        "age": 40,
+        "password": "Password123",
+    },
+    {
+        "first_name": "D",
+        "last_name": "Four",
+        "email": "stats.d@example.com",
+        "phone_number": "+96170440004",
+        "city": "Saida",
+        "age": 50,
+        "password": "Password123",
+    },
+    {
+        "first_name": "E",
+        "last_name": "Five",
+        "email": "stats.e@example.com",
+        "phone_number": "+96170440005",
+        "city": "Jbeil",
+        "age": 60,
+        "password": "Password123",
+    },
 ]
 
 

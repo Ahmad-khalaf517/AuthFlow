@@ -1,4 +1,5 @@
 """Smoke test verifying the app boots and the health endpoint responds."""
+
 import pytest
 
 from app.api.deps import get_db

@@ -1,4 +1,5 @@
 """Integration tests for GET /api/v1/users/me — the get_current_user dependency."""
+
 import time
 import uuid
 

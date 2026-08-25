@@ -1,4 +1,5 @@
 """Integration tests for POST /api/v1/auth/login."""
+
 import pytest
 from sqlalchemy import select
 

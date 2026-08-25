@@ -3,6 +3,7 @@
 Integration tests run against an isolated in-memory SQLite database, never
 the real DATABASE_URL from .env — that may point at a live Neon instance.
 """
+
 from collections.abc import AsyncGenerator
 
 import pytest_asyncio

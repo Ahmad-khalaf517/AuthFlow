@@ -1,4 +1,5 @@
 """Public statistics business logic — all scoped to active (non-soft-deleted) users."""
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud import user as user_crud

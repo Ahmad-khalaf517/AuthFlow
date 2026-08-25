@@ -1,4 +1,5 @@
 """SQLAlchemy declarative base and model registry for Alembic autogenerate."""
+
 from sqlalchemy.orm import DeclarativeBase
 
 

@@ -1,4 +1,5 @@
 """Integration tests for GET /api/v1/users — admin-only pagination + filtering."""
+
 import pytest
 from sqlalchemy import select
 
@@ -21,14 +22,42 @@ ADMIN_PAYLOAD = {
 
 # A spread of users to filter/paginate over.
 OTHER_USERS = [
-    {"first_name": "John", "last_name": "Doe", "email": "john.doe.list@example.com",
-     "phone_number": "+96170220001", "city": "Tripoli", "age": 25, "password": "Password123"},
-    {"first_name": "Johnny", "last_name": "Smith", "email": "johnny.smith.list@example.com",
-     "phone_number": "+96170220002", "city": "Tripoli", "age": 30, "password": "Password123"},
-    {"first_name": "Mona", "last_name": "Zein", "email": "mona.zein.list@example.com",
-     "phone_number": "+96170220003", "city": "Saida", "age": 25, "password": "Password123"},
-    {"first_name": "Tarek", "last_name": "Hage", "email": "tarek.hage.list@example.com",
-     "phone_number": "+96170220004", "city": "Beirut", "age": 50, "password": "Password123"},
+    {
+        "first_name": "John",
+        "last_name": "Doe",
+        "email": "john.doe.list@example.com",
+        "phone_number": "+96170220001",
+        "city": "Tripoli",
+        "age": 25,
+        "password": "Password123",
+    },
+    {
+        "first_name": "Johnny",
+        "last_name": "Smith",
+        "email": "johnny.smith.list@example.com",
+        "phone_number": "+96170220002",
+        "city": "Tripoli",
+        "age": 30,
+        "password": "Password123",
+    },
+    {
+        "first_name": "Mona",
+        "last_name": "Zein",
+        "email": "mona.zein.list@example.com",
+        "phone_number": "+96170220003",
+        "city": "Saida",
+        "age": 25,
+        "password": "Password123",
+    },
+    {
+        "first_name": "Tarek",
+        "last_name": "Hage",
+        "email": "tarek.hage.list@example.com",
+        "phone_number": "+96170220004",
+        "city": "Beirut",
+        "age": 50,
+        "password": "Password123",
+    },
 ]
 
 
@@ -200,7 +229,9 @@ async def test_filters_combined_with_pagination(client):
     await _seed_other_users(client)
 
     response = await client.get(
-        USERS_URL, params={"city": "Tripoli", "type": "client", "page": 1, "limit": 1}, headers=_auth(token)
+        USERS_URL,
+        params={"city": "Tripoli", "type": "client", "page": 1, "limit": 1},
+        headers=_auth(token),
     )
 
     assert response.status_code == 200

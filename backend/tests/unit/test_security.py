@@ -1,4 +1,5 @@
 """Unit tests for password hashing and JWT helpers."""
+
 import time
 
 import pytest

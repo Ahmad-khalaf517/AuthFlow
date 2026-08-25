@@ -2,13 +2,18 @@
 
 JWT -> get_current_user (identify) -> require_role (authorize) -> route.
 """
+
 from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose.exceptions import JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.exceptions import AccountDeactivatedError, NotAuthenticatedError, PermissionDeniedError
+from app.core.exceptions import (
+    AccountDeactivatedError,
+    NotAuthenticatedError,
+    PermissionDeniedError,
+)
 from app.core.rate_limit import InMemoryRateLimiter
 from app.core.security import decode_token
 from app.crud import user as user_crud
@@ -32,6 +37,7 @@ async def rate_limit_login(request: Request) -> None:
     """
     client_host = request.client.host if request.client else "unknown"
     login_rate_limiter.check(client_host)
+
 
 # auto_error=False so a missing/malformed header goes through our own
 # NotAuthenticatedError -> consistent {"detail": ...} error shape, instead of

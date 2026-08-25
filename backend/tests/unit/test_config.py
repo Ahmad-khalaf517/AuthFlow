@@ -1,4 +1,5 @@
 """Unit tests for Settings' production safety guard."""
+
 import pytest
 
 from app.core.config import Settings
