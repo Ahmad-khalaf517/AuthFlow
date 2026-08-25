@@ -153,23 +153,18 @@ Three related gaps, all under "will this survive contact with production":
 
 ## Recommended, not implemented
 
-Everything below is a legitimate next step for a system that needs to
-handle real production traffic and real attackers — but each one is a new
-subsystem, not a fix to something that exists, and none were asked for.
-Listed here so the gap is a documented decision, not an oversight. (Status
-as of the initial audit — see "Recommendations implemented" further down
-for what's since been built.)
-
-- **Containerization** (Dockerfile, docker-compose for local Postgres) —
-  not attempted; the project currently assumes a hosted Postgres (Neon)
-  and a local venv.
+(Status as of the initial audit. All seven items originally listed here
+were subsequently built — see "Recommendations implemented" below —
+each a legitimate next step for a system that needs to handle real
+production traffic and real attackers, not a fix to something that
+existed, and none were asked for at the time; the gap was a documented
+decision, not an oversight. Nothing currently outstanding.)
 
 ## Recommendations implemented
 
-Six of the seven items above (plus one gap found afterward, not on the
-original list) were subsequently built, each live-verified against the
-real Neon database and committed separately. Containerization is still
-open — see "Recommended, not implemented" above.
+All seven items above, plus one gap found afterward that wasn't on the
+original list, have now been built, each live-verified and committed
+separately.
 
 ### Rate limiting / brute-force protection on `/auth/login`
 
@@ -367,3 +362,42 @@ mypy, and pytest with coverage — from a clean shell exactly as the
 workflow invokes them, before and after the formatting-normalization
 commit, confirming the before state was genuinely red and the after
 state is genuinely green (mypy aside, by design).
+
+### Containerization
+
+A `backend/Dockerfile` (`python:3.11-slim`, non-root user, dependency
+layer cached ahead of application code) plus a root-level
+`docker-compose.yml` with three services: `postgres` (official
+`postgres:16-alpine`, health-checked), `migrate` (runs `alembic upgrade
+head` once `postgres` is healthy), and `api` (starts once `migrate`
+completes successfully). One `docker-compose up` gets a fully working
+local stack with no Neon dependency at all.
+
+Wiring up the local-Postgres compose service surfaced a real bug:
+`db/session.py` forced SSL onto *any* `postgresql` URL unconditionally.
+That's correct for Neon (requires it) but wrong for docker-compose's
+local Postgres, which doesn't have TLS configured — asyncpg's
+`ssl=<context>` means *required*, not *preferred*, so the connection
+would have failed outright rather than falling back to plaintext. Fixed
+with a new `DB_SSL` setting (default `True`, matching every existing
+deployment target unchanged); the compose file's `migrate`/`api`
+services override it to `false`. Unit-tested directly
+(`tests/unit/test_db_session.py`): SSL context attached for
+Postgres+`DB_SSL=True`, no connect args for Postgres+`DB_SSL=False`,
+and never attached for SQLite regardless — 3 new tests, 131 passing
+project-wide.
+
+**Honest limitation, unlike every other item on this list**: this
+environment has no Docker installed, so unlike every other
+recommendation in this document, the container image was never actually
+built and the compose stack was never actually run end-to-end — no
+`docker build`, no `docker-compose up`, no real proof the three services
+actually talk to each other. What *was* verified: the Dockerfile follows
+a standard, unremarkable pattern; `docker-compose.yml` parses as valid
+YAML with the intended service graph (checked programmatically); the
+`DB_SSL` fix it depends on is unit-tested in isolation; and the existing
+default path (`DB_SSL` unset, real Neon, no compose involved) was
+re-verified live to confirm the new setting didn't change any existing
+behavior. The docker-compose stack itself is unverified and should be
+smoke-tested (`docker-compose up`, confirm `/health` returns 200) before
+being relied on.

@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     DATABASE_URL: str = "sqlite+aiosqlite:///./authflow.db"
+    # Neon (and most hosted Postgres) requires SSL; a local Postgres via
+    # docker-compose doesn't have it enabled by default, so that setup
+    # overrides this to False. Ignored for the SQLite fallback.
+    DB_SSL: bool = True
 
     # Postgres connection pool (ignored for the SQLite fallback — see
     # db/session.py). pool_recycle comfortably undercuts Neon's idle

@@ -15,8 +15,14 @@ def _connect_args() -> dict:
     asyncpg doesn't understand libpq-style URL params like `sslmode` /
     `channel_binding` (it raises a TypeError if they're present), so SSL is
     configured here via connect_args instead of the connection string.
+
+    Gated on settings.DB_SSL (default True) rather than being automatic for
+    every "postgresql" URL: a local Postgres via docker-compose doesn't have
+    TLS enabled by default, and asyncpg's ssl=<context> means *required*, not
+    *preferred* -- passing it against a server with no TLS listener fails the
+    connection outright rather than falling back to plaintext.
     """
-    if make_url(settings.DATABASE_URL).get_backend_name() == "postgresql":
+    if make_url(settings.DATABASE_URL).get_backend_name() == "postgresql" and settings.DB_SSL:
         return {"ssl": ssl.create_default_context()}
     return {}
 
