@@ -160,15 +160,6 @@ Listed here so the gap is a documented decision, not an oversight. (Status
 as of the initial audit — see "Recommendations implemented" further down
 for what's since been built.)
 
-- **Trigram (`pg_trgm`) indexes for the `ILIKE '%...%'` filters** on
-  `city`/`first_name`/`last_name`/`email`. The plain btree index just added
-  on `type` genuinely helps that exact-match filter; it does **not** help
-  the partial-match ones — a leading-wildcard `LIKE` can't use a standard
-  btree index at all. At current/expected scale this doesn't matter yet;
-  it will if the user table grows into the hundreds of thousands and
-  `GET /users?city=...` stays a common query. Fixing it properly means
-  `CREATE EXTENSION pg_trgm` plus GIN indexes, which is a real
-  infrastructure decision, not a code change I'd make silently.
 - **Structured/observability logging** — request IDs, correlation IDs
   tying a log line back to a specific request across the DB and
   application layers. Right now logging is just SQLAlchemy's own engine
@@ -211,3 +202,28 @@ Live-verified against Neon: 5 wrong-password attempts each got 401: the
 6th got 429, including a subsequent attempt with the *correct* password
 (also blocked, since the endpoint is what's rate-limited, not just failed
 credentials).
+
+### Trigram (`pg_trgm`) indexes for the partial-match filters
+
+`CREATE EXTENSION pg_trgm` plus a GIN `gin_trgm_ops` index on each of
+`first_name`/`last_name`/`email`/`city` — the columns `GET /users` filters
+with `ILIKE '%...%'`, which a plain btree index can't accelerate at all
+(a leading wildcard rules that out). Declared as real `Index(...)` objects
+in the `User` model, not just raw migration SQL, so a future
+`alembic revision --autogenerate` recognizes them as intentional instead of
+proposing to drop them. `postgresql_using`/`postgresql_ops` are
+Postgres-only `Index` arguments — confirmed the full test suite still
+passes on the SQLite fallback, where they're silently ignored and just
+produce a harmless plain index.
+
+Live-verified against Neon: `pg_trgm` installed, all four indexes present.
+With the current near-empty table the planner correctly picks a sequential
+scan (expected — cost-based, and exactly why this was filed as "matters at
+scale, not today"); forcing `enable_seqscan = OFF` confirmed Postgres *can*
+and *does* use `ix_users_first_name_trgm` via a Bitmap Index Scan for an
+`ILIKE '%...%'` query, so the index is genuinely functional, not just
+present. (Caught and fixed a related slip while checking this: that
+`SET enable_seqscan = OFF` runs on a pooled connection and isn't
+session-scoped-and-discarded automatically — disposed the pool afterward
+so no connection with that lingering state could be handed to a real
+request later.)

@@ -3,7 +3,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Enum, Integer, String, Uuid, func
+from sqlalchemy import Boolean, DateTime, Enum, Index, Integer, String, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -14,8 +14,29 @@ class UserRole(str, enum.Enum):
     CLIENT = "client"
 
 
+def _trgm_index(name: str, column: str) -> Index:
+    """A GIN trigram index -- unlike the plain btree index already on
+    `type`, this actually accelerates the ILIKE '%...%' filters GET /users
+    uses for first_name/last_name/email/city, since a leading wildcard
+    can't use a standard btree index at all. Declared here (not just as a
+    raw migration) so a future `alembic revision --autogenerate` recognizes
+    these as intentional instead of proposing to drop them.
+
+    postgresql_using/postgresql_ops are PostgreSQL-only Index arguments --
+    SQLAlchemy silently ignores them on other dialects, so this degrades to
+    a harmless plain index on the SQLite fallback used by the test suite.
+    """
+    return Index(name, column, postgresql_using="gin", postgresql_ops={column: "gin_trgm_ops"})
+
+
 class User(Base):
     __tablename__ = "users"
+    __table_args__ = (
+        _trgm_index("ix_users_first_name_trgm", "first_name"),
+        _trgm_index("ix_users_last_name_trgm", "last_name"),
+        _trgm_index("ix_users_email_trgm", "email"),
+        _trgm_index("ix_users_city_trgm", "city"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
 
