@@ -165,11 +165,6 @@ for what's since been built.)
   application layers. Right now logging is just SQLAlchemy's own engine
   echo plus uvicorn's access log plus the new catch-all handler's
   `logger.exception`.
-- **Refresh token rotation.** Access tokens are 30 minutes with no refresh
-  flow — a deliberate scope boundary from earlier in the build, not
-  something this pass changed. Still the right thing to flag for a system
-  that wants longer-lived sessions without re-prompting for a password
-  every 30 minutes.
 - **Security headers middleware** (HSTS, `X-Content-Type-Options`, etc.) —
   standard hardening, cheap to add, just genuinely out of scope for this
   pass.
@@ -227,3 +222,31 @@ present. (Caught and fixed a related slip while checking this: that
 session-scoped-and-discarded automatically — disposed the pool afterward
 so no connection with that lingering state could be handed to a real
 request later.)
+
+### Refresh token rotation
+
+Login now returns `{access_token, refresh_token, token_type}` instead of
+just an access token. `POST /auth/refresh` exchanges a refresh token for a
+brand new access+refresh pair and immediately invalidates the one just
+used (rotation) — a new `current_refresh_token_id` column on `User` holds
+the one refresh token currently valid for that user, checked against the
+incoming token's `jti` claim. Both token types now carry a `"type"` claim
+(`"access"` / `"refresh"`, `create_access_token` didn't have one before)
+so a refresh token can never be used to authenticate a normal request, and
+vice versa — `get_current_user` and `refresh_tokens()` each check the type
+they require.
+
+Presenting an already-rotated-out refresh token (a replay of a stolen one,
+most likely, though an outright forgery hits the same check) doesn't just
+fail that one request — it bumps `token_version` and clears
+`current_refresh_token_id`, killing *every* session for the account,
+including the one legitimately created by the rotation that superseded it.
+Both access and refresh tokens are already covered by the existing
+password-change invalidation (`token_version`), so a compromised refresh
+token dies the moment the password changes too.
+
+Live-verified against Neon in one continuous flow: login returned both
+tokens → refresh produced a working new access token → replaying the
+original (now-superseded) refresh token got 401 → and killed the
+legitimately-rotated session's access token too, confirming the
+reuse-detection response is account-wide, not per-token.

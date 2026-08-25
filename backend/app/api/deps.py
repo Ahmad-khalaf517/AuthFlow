@@ -50,6 +50,9 @@ async def get_current_user(
     DB on every call, so a token issued before a demotion or deletion can't
     keep asserting stale permissions; a mismatched token_version means the
     password changed since this token was issued, so it's rejected too.
+    Only an "access" token is accepted here -- a refresh token is a
+    different credential for a different purpose (POST /auth/refresh only),
+    not an alternate way to authenticate a normal request.
     """
     if credentials is None:
         raise NotAuthenticatedError()
@@ -58,6 +61,9 @@ async def get_current_user(
         token_payload = decode_token(credentials.credentials)
     except JWTError:
         raise NotAuthenticatedError() from None
+
+    if token_payload.token_type != "access":
+        raise NotAuthenticatedError()
 
     user = await user_crud.get_by_id(db, token_payload.subject)
     if user is None:

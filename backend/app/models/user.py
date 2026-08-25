@@ -62,6 +62,13 @@ class User(Base):
     # of leaving them valid until natural expiry.
     token_version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
 
+    # The jti of the one refresh token currently valid for this user.
+    # POST /auth/refresh requires the incoming token's jti to match this
+    # exactly; using an already-rotated-out refresh token (a replay of a
+    # stolen one, most likely) is treated as a compromise signal and kills
+    # every session (see auth_service.refresh_tokens).
+    current_refresh_token_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+
     # Soft delete: is_deleted for cheap filtering, deleted_at for the audit trail.
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

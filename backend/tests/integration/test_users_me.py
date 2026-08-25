@@ -7,7 +7,7 @@ from jose import jwt
 from sqlalchemy import select
 
 from app.core.config import settings
-from app.core.security import create_access_token
+from app.core.security import create_access_token, create_refresh_token
 from app.models.user import User
 from tests.conftest import TestSessionLocal
 
@@ -81,6 +81,18 @@ async def test_me_rejects_token_for_nonexistent_user(client):
     token = create_access_token(subject=str(uuid.uuid4()), token_version=1)
 
     response = await client.get(ME_URL, headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_me_rejects_a_refresh_token_used_as_bearer_token(client):
+    """A refresh token is a different credential for a different purpose
+    (POST /auth/refresh only) -- it must not double as a way to
+    authenticate a normal request just because it's a validly signed JWT.
+    """
+    refresh_token = create_refresh_token(subject=str(uuid.uuid4()), token_version=1, jti="jti-1")
+
+    response = await client.get(ME_URL, headers={"Authorization": f"Bearer {refresh_token}"})
     assert response.status_code == 401
 
 

@@ -6,7 +6,13 @@ from jose import jwt
 from jose.exceptions import ExpiredSignatureError, JWTError
 
 from app.core.config import settings
-from app.core.security import create_access_token, decode_token, get_password_hash, verify_password
+from app.core.security import (
+    create_access_token,
+    create_refresh_token,
+    decode_token,
+    get_password_hash,
+    verify_password,
+)
 
 
 @pytest.mark.asyncio
@@ -36,6 +42,30 @@ def test_decode_token_round_trips():
     result = decode_token(token)
     assert result.subject == "user-123"
     assert result.token_version == 2
+    assert result.token_type == "access"
+    assert result.jti is None
+
+
+def test_refresh_token_carries_type_and_jti():
+    token = create_refresh_token(subject="user-123", token_version=1, jti="jti-abc")
+    result = decode_token(token)
+    assert result.subject == "user-123"
+    assert result.token_type == "refresh"
+    assert result.jti == "jti-abc"
+
+
+def test_refresh_token_has_longer_expiry_than_access_token():
+    access = jwt.decode(
+        create_access_token(subject="user-123", token_version=1),
+        settings.SECRET_KEY,
+        algorithms=[settings.ALGORITHM],
+    )
+    refresh = jwt.decode(
+        create_refresh_token(subject="user-123", token_version=1, jti="jti-abc"),
+        settings.SECRET_KEY,
+        algorithms=[settings.ALGORITHM],
+    )
+    assert refresh["exp"] > access["exp"]
 
 
 def test_decode_token_rejects_expired():
@@ -60,7 +90,19 @@ def test_decode_token_rejects_bad_signature():
 
 def test_decode_token_rejects_missing_version_claim():
     token = jwt.encode(
-        {"sub": "user-123", "exp": int(time.time()) + 3600}, settings.SECRET_KEY, algorithm=settings.ALGORITHM
+        {"sub": "user-123", "type": "access", "exp": int(time.time()) + 3600},
+        settings.SECRET_KEY,
+        algorithm=settings.ALGORITHM,
+    )
+    with pytest.raises(JWTError):
+        decode_token(token)
+
+
+def test_decode_token_rejects_missing_type_claim():
+    token = jwt.encode(
+        {"sub": "user-123", "ver": 1, "exp": int(time.time()) + 3600},
+        settings.SECRET_KEY,
+        algorithm=settings.ALGORITHM,
     )
     with pytest.raises(JWTError):
         decode_token(token)

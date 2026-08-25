@@ -15,6 +15,9 @@ from app.core.config import settings
 class TokenPayload:
     subject: str
     token_version: int
+    token_type: str  # "access" | "refresh"
+    jti: str | None  # only set on refresh tokens
+
 
 _hasher = PasswordHasher()
 
@@ -58,14 +61,37 @@ def create_access_token(subject: str, token_version: int) -> str:
     payload = {
         "sub": subject,
         "ver": token_version,
+        "type": "access",
         "iat": now,
         "exp": now + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
     }
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
+def create_refresh_token(subject: str, token_version: int, jti: str) -> str:
+    """jti identifies this specific refresh token so the server can tell a
+    legitimate reuse (the current one) from a replay of one already rotated
+    out (see auth_service.refresh_tokens) — an access token doesn't need
+    this, since it's never rotated, only checked against token_version.
+    """
+    now = datetime.now(UTC)
+    payload = {
+        "sub": subject,
+        "ver": token_version,
+        "type": "refresh",
+        "jti": jti,
+        "iat": now,
+        "exp": now + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
+    }
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+
 def decode_token(token: str) -> TokenPayload:
-    """Decode a JWT and return its subject (user id) and token_version.
+    """Decode a JWT and return its subject, token_version, type, and (for
+    refresh tokens) jti. Doesn't check the type is what the caller expects
+    — that's the caller's job (get_current_user requires "access",
+    auth_service.refresh_tokens requires "refresh"), so a refresh token can
+    never be handed to decode_token and come out usable as an access token.
 
     Raises jose.JWTError (ExpiredSignatureError / JWTClaimsError included,
     both subclass it) on any invalid, expired, or malformed token — callers
@@ -74,6 +100,9 @@ def decode_token(token: str) -> TokenPayload:
     payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
     subject = payload.get("sub")
     token_version = payload.get("ver")
-    if subject is None or token_version is None:
+    token_type = payload.get("type")
+    if subject is None or token_version is None or token_type is None:
         raise JWTError("Token is missing required claims")
-    return TokenPayload(subject=subject, token_version=token_version)
+    return TokenPayload(
+        subject=subject, token_version=token_version, token_type=token_type, jti=payload.get("jti")
+    )
