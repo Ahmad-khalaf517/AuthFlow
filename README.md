@@ -66,7 +66,7 @@ AuthFlow/
 │   ├── requirements.txt
 │   ├── requirements-dev.txt
 │   └── .env.example
-├── frontend/                    Reserved for a future frontend client
+├── frontend/                    React client + Playwright E2E/accessibility tests
 ├── .github/workflows/            CI (ruff, black, mypy, pytest)
 ├── docker-compose.yml            Local Postgres + migrate + api
 └── README.md
@@ -203,7 +203,6 @@ alembic upgrade head
       admins could edit or soft-delete their own account through the admin
       endpoints — now blocked (403).
 
-Full spec implemented, 131 automated tests passing (`pytest`), 97% coverage,
-plus a live pass against the real Neon database after every phase. Not
-implemented: a frontend (`frontend/PROMPT.md` has a corrected build prompt
-ready, not yet built).
+Full backend spec and React frontend implemented. The backend has 131 automated
+tests passing (`pytest`) with 97% coverage, and the frontend has nine Playwright
+E2E/accessibility tests covering both roles and critical browser journeys.

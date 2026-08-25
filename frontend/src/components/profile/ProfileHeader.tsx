@@ -14,7 +14,7 @@ export function ProfileHeader({ user }: { user: User }) {
           <Badge tone={user.type === 'admin' ? 'blue' : 'green'}>{user.type}</Badge>
         </div>
         <p className="mt-1 text-sm text-slate-500">{user.email}</p>
-        <p className="mt-2 text-xs text-slate-400">
+        <p className="mt-2 text-xs text-slate-600">
           Your initials are used in place of a profile image.
         </p>
       </div>

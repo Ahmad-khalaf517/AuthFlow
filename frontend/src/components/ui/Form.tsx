@@ -28,7 +28,7 @@ export function FormField({
         <label htmlFor={htmlFor} className="text-sm font-semibold text-slate-700">
           {label}
         </label>
-        {optional ? <span className="text-xs text-slate-400">Optional</span> : null}
+        {optional ? <span className="text-xs text-slate-600">Optional</span> : null}
       </div>
       {children}
       {error ? (
@@ -36,7 +36,7 @@ export function FormField({
           {error}
         </p>
       ) : hint ? (
-        <p id={hintId} className="text-xs text-slate-500">
+        <p id={hintId} className="text-xs text-slate-600">
           {hint}
         </p>
       ) : null}
