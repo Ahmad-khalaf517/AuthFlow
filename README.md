@@ -16,13 +16,20 @@ A production-style authentication and user management REST API built with FastAP
 - Soft delete
 - Centralized, consistent error handling
 - Database integration via SQLAlchemy 2.0 (async) + Alembic migrations
+- Refresh token rotation with replay detection (`POST /api/v1/auth/refresh`)
+- Rate limiting on login (brute-force protection)
+- Structured JSON logging with request-ID correlation
+- Security headers on every response
+- CI (GitHub Actions: ruff, black, mypy, pytest)
+- Containerized (Dockerfile + docker-compose for local Postgres)
 
 ## Route summary
 
 | Method | Endpoint                     | Access        | Purpose                              |
 |--------|-------------------------------|---------------|---------------------------------------|
 | POST   | `/api/v1/auth/register`       | Public        | Register — always creates a `client` |
-| POST   | `/api/v1/auth/login`          | Public        | Log in, receive a JWT                |
+| POST   | `/api/v1/auth/login`          | Public        | Log in, receive an access + refresh token |
+| POST   | `/api/v1/auth/refresh`        | Public        | Exchange a refresh token for a new pair (rotates it) |
 | GET    | `/api/v1/users/me`            | Authenticated | Get own profile                      |
 | PUT    | `/api/v1/users/me`            | Authenticated | Update own profile                   |
 | POST   | `/api/v1/users`               | Admin         | Create a `client` or `admin`         |
@@ -40,7 +47,8 @@ AuthFlow/
 ├── backend/                   FastAPI application
 │   ├── app/
 │   │   ├── main.py            App entrypoint, middleware, router registration
-│   │   ├── core/               config, security (JWT/hashing), exceptions
+│   │   ├── core/               config, security (JWT/hashing), exceptions,
+│   │   │                       rate limiting, structured logging
 │   │   ├── api/
 │   │   │   ├── deps.py         Shared dependencies (auth guards, role checks)
 │   │   │   └── v1/endpoints/   auth, users, stats routers
@@ -48,16 +56,19 @@ AuthFlow/
 │   │   ├── schemas/            Pydantic schemas
 │   │   ├── crud/                Database access layer
 │   │   ├── services/            Business logic
-│   │   ├── middleware/          Global exception handlers
+│   │   ├── middleware/          Request ID, security headers, exception handlers
 │   │   └── db/                  Engine, session, init
 │   ├── alembic/                 Database migrations
 │   ├── tests/
 │   │   ├── unit/                 Unit tests
 │   │   └── integration/          Integration tests (API, DB)
+│   ├── Dockerfile
 │   ├── requirements.txt
 │   ├── requirements-dev.txt
 │   └── .env.example
 ├── frontend/                    Reserved for a future frontend client
+├── .github/workflows/            CI (ruff, black, mypy, pytest)
+├── docker-compose.yml            Local Postgres + migrate + api
 └── README.md
 ```
 
@@ -106,6 +117,18 @@ uvicorn app.main:app --reload
 
 Then open http://localhost:8000/docs for the interactive API docs, or check
 http://localhost:8000/health.
+
+### Docker (optional, local Postgres — no Neon needed)
+
+```bash
+docker-compose up
+```
+
+Brings up a local Postgres, runs migrations against it, then starts the
+API on http://localhost:8000. Uses its own `docker-compose.yml`-provided
+config (`DB_SSL=false`, since the local Postgres container doesn't have
+TLS configured — Neon does and stays `DB_SSL=true`), so it doesn't touch
+`backend/.env`.
 
 Run tests:
 
@@ -158,10 +181,17 @@ alembic upgrade head
       a password change, inconsistent error responses, a health check that didn't
       check anything, an unconfigurable connection pool, dead code/dependencies,
       and a coverage-measurement bug that was silently hiding real coverage
+- [x] Every recommendation from the audit's "not implemented" list has since
+      been built — see [`docs/AUDIT.md`](docs/AUDIT.md#recommendations-implemented):
+      rate limiting on login, `pg_trgm` indexes for partial-match filters,
+      refresh token rotation with replay detection, structured JSON logging
+      with request-ID correlation, security headers, CI (ruff/black/mypy/pytest),
+      and containerization (Dockerfile + docker-compose for local Postgres).
+      Plus one gap found live-testing along the way, not on the original list:
+      admins could edit or soft-delete their own account through the admin
+      endpoints — now blocked (403).
 
-Full spec implemented. 95 automated tests passing (`pytest`), 96% coverage,
-plus a comprehensive live pass against the real Neon database exercising
-the entire flow end-to-end after every phase. Not implemented (documented
-in `docs/AUDIT.md`, out of scope): a frontend, JWT refresh tokens, rate
-limiting, observability/structured logging, security headers, CI, and
-containerization.
+Full spec implemented, 131 automated tests passing (`pytest`), 97% coverage,
+plus a live pass against the real Neon database after every phase. Not
+implemented: a frontend (`frontend/PROMPT.md` has a corrected build prompt
+ready, not yet built).
