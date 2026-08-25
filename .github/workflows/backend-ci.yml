@@ -1,0 +1,48 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-ci.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-ci.yml"
+
+defaults:
+  run:
+    working-directory: backend
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: backend/requirements-dev.txt
+
+      - run: pip install -r requirements-dev.txt
+
+      - name: ruff
+        run: ruff check .
+
+      - name: black
+        run: black --check .
+
+      - name: mypy
+        # Known pre-existing type errors in app/crud and app/api/v1/endpoints
+        # (ORM model vs. Pydantic response_model mismatches mypy can't see
+        # through) predate this workflow -- see docs/AUDIT.md. Non-blocking
+        # until those are cleaned up, so it still reports regressions without
+        # leaving CI red on day one for debt this step didn't introduce.
+        run: mypy app
+        continue-on-error: true
+
+      - name: pytest
+        run: pytest -q --cov=app --cov-report=term-missing
