@@ -72,21 +72,20 @@ async def list_users(
     return UserListResponse(page=page, limit=limit, total=total, total_pages=total_pages, users=users)
 
 
-@router.put(
-    "/{user_id}",
-    response_model=UserRead,
-    dependencies=[Depends(require_role(UserRole.ADMIN))],
-)
+@router.put("/{user_id}", response_model=UserRead)
 async def admin_update_user(
-    user_id: UUID, user_in: UserAdminUpdate, db: AsyncSession = Depends(get_db)
+    user_id: UUID,
+    user_in: UserAdminUpdate,
+    current_admin: User = Depends(require_role(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db),
 ) -> UserRead:
-    return await user_service.admin_update_user(db, user_id, user_in)
+    return await user_service.admin_update_user(db, user_id, user_in, current_admin=current_admin)
 
 
-@router.delete(
-    "/{user_id}",
-    response_model=UserRead,
-    dependencies=[Depends(require_role(UserRole.ADMIN))],
-)
-async def admin_delete_user(user_id: UUID, db: AsyncSession = Depends(get_db)) -> UserRead:
-    return await user_service.admin_soft_delete_user(db, user_id)
+@router.delete("/{user_id}", response_model=UserRead)
+async def admin_delete_user(
+    user_id: UUID,
+    current_admin: User = Depends(require_role(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+) -> UserRead:
+    return await user_service.admin_soft_delete_user(db, user_id, current_admin=current_admin)

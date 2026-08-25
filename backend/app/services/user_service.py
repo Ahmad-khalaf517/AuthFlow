@@ -3,7 +3,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import DuplicateEmailError, UserNotFoundError
+from app.core.exceptions import CannotTargetSelfError, DuplicateEmailError, UserNotFoundError
 from app.core.security import get_password_hash
 from app.crud import user as user_crud
 from app.models.user import User, UserRole
@@ -52,11 +52,23 @@ async def update_own_profile(db: AsyncSession, current_user: User, user_in: User
     return await user_crud.update(db, current_user, **updates)
 
 
-async def admin_update_user(db: AsyncSession, user_id: UUID, user_in: UserAdminUpdate) -> User:
+async def admin_update_user(
+    db: AsyncSession, user_id: UUID, user_in: UserAdminUpdate, current_admin: User
+) -> User:
     """Admin update of any user, including their role. Safe only because the
     route requires require_role(ADMIN) — this function does no permission
     checking of its own, same rationale as create_user_as_admin.
+
+    Deliberately excludes the caller's own account: this route can hand out
+    or take away admin rights, so editing yourself through it (even
+    unintentionally) risks an accidental self-demotion. Self-service edits
+    belong on PUT /users/me instead, which can't touch the role at all.
     """
+    if user_id == current_admin.id:
+        raise CannotTargetSelfError(
+            "Admins cannot update their own account through this endpoint. Use PUT /users/me instead."
+        )
+
     target = await user_crud.get_by_id(db, str(user_id))
     if target is None:
         raise UserNotFoundError()
@@ -76,7 +88,15 @@ async def admin_update_user(db: AsyncSession, user_id: UUID, user_in: UserAdminU
     return await user_crud.update(db, target, **updates)
 
 
-async def admin_soft_delete_user(db: AsyncSession, user_id: UUID) -> User:
+async def admin_soft_delete_user(db: AsyncSession, user_id: UUID, current_admin: User) -> User:
+    """Deliberately excludes the caller's own account -- letting an admin
+    soft-delete themselves risks locking them out with no way back in
+    (worse still if they're the only admin left), for no real benefit over
+    having a *different* admin do it.
+    """
+    if user_id == current_admin.id:
+        raise CannotTargetSelfError("Admins cannot delete their own account.")
+
     target = await user_crud.get_by_id(db, str(user_id))
     if target is None:
         raise UserNotFoundError()

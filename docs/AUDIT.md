@@ -250,3 +250,23 @@ tokens → refresh produced a working new access token → replaying the
 original (now-superseded) refresh token got 401 → and killed the
 legitimately-rotated session's access token too, confirming the
 reuse-detection response is account-wide, not per-token.
+
+### Admin self-protection (found live-testing, not in the original audit)
+
+Not one of the seven audited items, but surfaced by hand-testing
+immediately after: nothing stopped an admin from editing or soft-deleting
+*their own* account through the admin management endpoints
+(`PUT`/`DELETE /users/{id}`). Soft-deleting yourself risks locking
+yourself out with no way back in — worse if you're the only admin left —
+and editing yourself through the "manage everyone" route (which can also
+change roles) risks an accidental self-demotion that `PUT /users/me`
+already structurally prevents. Both routes now reject `user_id == the
+caller's own id` with 403 before doing anything else; self-service edits
+still go through `PUT /users/me` as before. `GET /users` still lists the
+admin among everyone else — only editing/deleting *themselves* through
+these two routes is blocked.
+
+Live-verified against Neon: an admin appears in their own `GET /users`
+listing (expected), a self-edit attempt gets 403 with account left
+untouched, a self-delete attempt gets 403 with the account still active
+and able to authenticate afterward.

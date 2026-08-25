@@ -152,6 +152,35 @@ async def test_admin_update_rejects_duplicate_email(client):
 
 
 @pytest.mark.asyncio
+async def test_admin_cannot_update_own_account_via_admin_endpoint(client):
+    admin_token = await _admin_token(client)
+    admin_id = await _get_id(ADMIN_PAYLOAD["email"])
+
+    response = await client.put(
+        f"{USERS_URL}/{admin_id}", json={"city": "Sidon"}, headers=_auth(admin_token)
+    )
+
+    assert response.status_code == 403
+    # Untouched -- self-service edits must go through PUT /users/me instead.
+    me = await client.get("/api/v1/users/me", headers=_auth(admin_token))
+    assert me.json()["city"] == ADMIN_PAYLOAD["city"]
+
+
+@pytest.mark.asyncio
+async def test_admin_cannot_demote_self_via_admin_endpoint(client):
+    admin_token = await _admin_token(client)
+    admin_id = await _get_id(ADMIN_PAYLOAD["email"])
+
+    response = await client.put(
+        f"{USERS_URL}/{admin_id}", json={"type": "client"}, headers=_auth(admin_token)
+    )
+
+    assert response.status_code == 403
+    me = await client.get("/api/v1/users/me", headers=_auth(admin_token))
+    assert me.json()["type"] == "admin"
+
+
+@pytest.mark.asyncio
 async def test_admin_update_nonexistent_user_returns_404(client):
     admin_token = await _admin_token(client)
 
@@ -214,6 +243,20 @@ async def test_soft_deleted_user_disappears_from_listing_and_cannot_login(client
         LOGIN_URL, json={"email": TARGET_PAYLOAD["email"], "password": TARGET_PAYLOAD["password"]}
     )
     assert login.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_admin_cannot_delete_own_account(client):
+    admin_token = await _admin_token(client)
+    admin_id = await _get_id(ADMIN_PAYLOAD["email"])
+
+    response = await client.delete(f"{USERS_URL}/{admin_id}", headers=_auth(admin_token))
+
+    assert response.status_code == 403
+    # Untouched -- still active, still able to authenticate.
+    me = await client.get("/api/v1/users/me", headers=_auth(admin_token))
+    assert me.status_code == 200
+    assert me.json()["is_deleted"] is False
 
 
 @pytest.mark.asyncio

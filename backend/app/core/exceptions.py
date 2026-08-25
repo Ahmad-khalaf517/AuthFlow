@@ -58,3 +58,8 @@ class RateLimitExceededError(AppError):
 class InvalidRefreshTokenError(AppError):
     status_code = 401
     detail = "Invalid or expired refresh token"
+
+
+class CannotTargetSelfError(AppError):
+    status_code = 403
+    detail = "Admins cannot perform this action on their own account through this endpoint"
