@@ -118,6 +118,18 @@ uvicorn app.main:app --reload
 Then open http://localhost:8000/docs for the interactive API docs, or check
 http://localhost:8000/health.
 
+### Test accounts
+
+Use these development-only accounts to test role-based frontend behavior:
+
+| Role   | Email                         | Password    |
+|--------|-------------------------------|-------------|
+| Admin  | `maya@gmail.com`              | `password1` |
+| Client | `ahmadkhalaf517@gmail.com`    | `password1` |
+
+These credentials are intended only for local testing and must not be used in
+production.
+
 ### Docker (optional, local Postgres — no Neon needed)
 
 ```bash
