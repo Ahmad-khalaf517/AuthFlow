@@ -160,9 +160,6 @@ Listed here so the gap is a documented decision, not an oversight. (Status
 as of the initial audit — see "Recommendations implemented" further down
 for what's since been built.)
 
-- **Security headers middleware** (HSTS, `X-Content-Type-Options`, etc.) —
-  standard hardening, cheap to add, just genuinely out of scope for this
-  pass.
 - **CI actually running `ruff`/`black`/`mypy`/`pytest`.** All four are
   configured in `pyproject.toml` and work when invoked by hand, but
   nothing runs them automatically on push/PR yet.
@@ -172,8 +169,10 @@ for what's since been built.)
 
 ## Recommendations implemented
 
-All seven items above were subsequently built, each live-verified against
-the real Neon database and committed separately.
+Five of the seven items above (plus one gap found afterward, not on the
+original list) were subsequently built, each live-verified against the
+real Neon database and committed separately. CI and containerization are
+still open — see "Recommended, not implemented" above.
 
 ### Rate limiting / brute-force protection on `/auth/login`
 
@@ -308,3 +307,23 @@ process's context var is reachable. Not fixed — would mean patching
 uvicorn's own logging rather than adding application code, and the
 `app.request` line already carries the same information (method, path,
 status, duration) with a correct request_id.
+
+### Security headers middleware
+
+A new `SecurityHeadersMiddleware` adds `Strict-Transport-Security`,
+`X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`,
+`Referrer-Policy: strict-origin-when-cross-origin`, a restrictive
+`Permissions-Policy`, and `X-XSS-Protection: 0` (explicitly disabling the
+legacy filter, which is itself a known source of vulnerabilities — not
+enabling it) to every response, success or error.
+
+Deliberately no `Content-Security-Policy`: FastAPI's built-in `/docs` and
+`/redoc` pages load their JS/CSS from a CDN, and a strict CSP would break
+them without a much larger nonce/allowlist effort that isn't worth it for
+an API that serves no other HTML. A documented gap, not an oversight.
+
+Live-verified against Neon: `/health` carries all six headers, `/docs`
+still renders (nothing broken by adding the middleware), and an
+unauthenticated request to `/api/v1/users/me` (a 401) still carries the
+headers too — hardening applies to error responses, not just successful
+ones.

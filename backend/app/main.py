@@ -16,6 +16,7 @@ from app.core.logging import configure_logging
 from app.db.session import engine
 from app.middleware.error_handler import register_exception_handlers
 from app.middleware.request_context import RequestIDMiddleware
+from app.middleware.security_headers import SecurityHeadersMiddleware
 
 configure_logging()
 
@@ -50,6 +51,7 @@ app.add_middleware(
 # reverse add order) -- every request gets a request_id, including
 # preflight OPTIONS requests CORSMiddleware handles itself.
 app.add_middleware(RequestIDMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
 
 app.include_router(api_router, prefix=settings.API_V1_PREFIX)
 
