@@ -37,6 +37,12 @@ class Settings(BaseSettings):
 
     BACKEND_CORS_ORIGINS: list[str] = ["http://localhost:3000"]
 
+    # Login brute-force protection. In-process only -- fine for a single
+    # instance; a multi-instance deployment needs a shared store (Redis)
+    # instead, since this state isn't shared across workers.
+    LOGIN_RATE_LIMIT_MAX_ATTEMPTS: int = 5
+    LOGIN_RATE_LIMIT_WINDOW_SECONDS: float = 60.0
+
     @model_validator(mode="after")
     def _reject_default_secret_outside_development(self) -> Self:
         """The classic production footgun: an env file copied from

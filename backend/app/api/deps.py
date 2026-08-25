@@ -2,18 +2,36 @@
 
 JWT -> get_current_user (identify) -> require_role (authorize) -> route.
 """
-from fastapi import Depends
+from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose.exceptions import JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.exceptions import AccountDeactivatedError, NotAuthenticatedError, PermissionDeniedError
+from app.core.rate_limit import InMemoryRateLimiter
 from app.core.security import decode_token
 from app.crud import user as user_crud
 from app.db.session import get_db
 from app.models.user import User, UserRole
 
-__all__ = ["get_db", "get_current_user", "require_role"]
+__all__ = ["get_db", "get_current_user", "require_role", "rate_limit_login"]
+
+login_rate_limiter = InMemoryRateLimiter(
+    max_attempts=settings.LOGIN_RATE_LIMIT_MAX_ATTEMPTS,
+    window_seconds=settings.LOGIN_RATE_LIMIT_WINDOW_SECONDS,
+)
+
+
+async def rate_limit_login(request: Request) -> None:
+    """Limits by client IP, counting every call regardless of outcome (not
+    just failures) -- simpler than tracking success/failure separately, and
+    still caps credential-stuffing volume even for a mix of right/wrong
+    guesses. 5 attempts/minute is generous for a mistyped password, tight
+    for a guessing script.
+    """
+    client_host = request.client.host if request.client else "unknown"
+    login_rate_limiter.check(client_host)
 
 # auto_error=False so a missing/malformed header goes through our own
 # NotAuthenticatedError -> consistent {"detail": ...} error shape, instead of

@@ -10,7 +10,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
-from app.api.deps import get_db
+from app.api.deps import get_db, login_rate_limiter
 from app.db.base import Base
 from app.main import app
 from app.models.user import User  # noqa: F401  (registers the table on Base.metadata)
@@ -38,6 +38,14 @@ async def _reset_db() -> AsyncGenerator[None, None]:
     yield
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
+
+
+@pytest_asyncio.fixture(autouse=True)
+def _reset_rate_limiter() -> None:
+    # The rate limiter is a module-level singleton so it works correctly in
+    # the real running app; without this, every test's login calls would
+    # share one counter across the whole suite and start 429ing each other.
+    login_rate_limiter.reset()
 
 
 @pytest_asyncio.fixture

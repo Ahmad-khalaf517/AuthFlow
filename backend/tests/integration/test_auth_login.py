@@ -73,3 +73,25 @@ async def test_login_rejects_soft_deleted_account(client):
 async def test_login_rejects_missing_password(client):
     response = await client.post(LOGIN_URL, json={"email": VALID_PAYLOAD["email"]})
     assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_login_rate_limited_after_repeated_attempts(client):
+    """Counts every attempt (not just failures) from the same client, so
+    the 6th call in the default window (max 5) is rejected regardless of
+    whether the credentials would've been correct.
+    """
+    await client.post(REGISTER_URL, json=VALID_PAYLOAD)
+    payload = {"email": VALID_PAYLOAD["email"], "password": "WrongPassword123"}
+
+    for _ in range(5):
+        response = await client.post(LOGIN_URL, json=payload)
+        assert response.status_code == 401
+
+    limited = await client.post(LOGIN_URL, json=payload)
+    assert limited.status_code == 429
+
+    # Even correct credentials are blocked while rate-limited.
+    correct = {"email": VALID_PAYLOAD["email"], "password": VALID_PAYLOAD["password"]}
+    still_limited = await client.post(LOGIN_URL, json=correct)
+    assert still_limited.status_code == 429

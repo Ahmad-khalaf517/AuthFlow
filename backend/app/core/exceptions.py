@@ -48,3 +48,13 @@ class UserNotFoundError(AppError):
 class ServiceUnavailableError(AppError):
     status_code = 503
     detail = "Service temporarily unavailable"
+
+
+class RateLimitExceededError(AppError):
+    status_code = 429
+    detail = "Too many attempts. Please try again later."
+
+
+class InvalidRefreshTokenError(AppError):
+    status_code = 401
+    detail = "Invalid or expired refresh token"

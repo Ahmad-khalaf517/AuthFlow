@@ -156,13 +156,10 @@ Three related gaps, all under "will this survive contact with production":
 Everything below is a legitimate next step for a system that needs to
 handle real production traffic and real attackers — but each one is a new
 subsystem, not a fix to something that exists, and none were asked for.
-Listed here so the gap is a documented decision, not an oversight:
+Listed here so the gap is a documented decision, not an oversight. (Status
+as of the initial audit — see "Recommendations implemented" further down
+for what's since been built.)
 
-- **Rate limiting / brute-force protection on `/auth/login`.** Right now
-  nothing stops unlimited password guesses against a known email. Generic
-  error messages prevent *enumeration*, but not *guessing*. Needs a
-  rate-limit store (Redis, or an in-process limiter if single-instance)
-  and a decision on limits/lockout policy.
 - **Trigram (`pg_trgm`) indexes for the `ILIKE '%...%'` filters** on
   `city`/`first_name`/`last_name`/`email`. The plain btree index just added
   on `type` genuinely helps that exact-match filter; it does **not** help
@@ -191,3 +188,26 @@ Listed here so the gap is a documented decision, not an oversight:
 - **Containerization** (Dockerfile, docker-compose for local Postgres) —
   not attempted; the project currently assumes a hosted Postgres (Neon)
   and a local venv.
+
+## Recommendations implemented
+
+All seven items above were subsequently built, each live-verified against
+the real Neon database and committed separately.
+
+### Rate limiting / brute-force protection on `/auth/login`
+
+In-process, sliding-window, keyed by client IP (`app/core/rate_limit.py`)
+— explicitly documented as single-instance only; a multi-instance
+deployment needs a shared store (Redis) instead, since this state isn't
+shared across workers or survives a restart. Counts every request to the
+endpoint regardless of outcome (simpler than tracking failures separately,
+still caps credential-stuffing volume). Default: 5 attempts/60s per IP,
+configurable via `LOGIN_RATE_LIMIT_MAX_ATTEMPTS`/`_WINDOW_SECONDS`. Tracked
+keys are LRU-capped at 10,000 so an attacker rotating through many spoofed
+IPs can't grow the limiter's own memory unboundedly — a rate limiter that
+itself leaks would be a bad trade.
+
+Live-verified against Neon: 5 wrong-password attempts each got 401: the
+6th got 429, including a subsequent attempt with the *correct* password
+(also blocked, since the endpoint is what's rate-limited, not just failed
+credentials).
