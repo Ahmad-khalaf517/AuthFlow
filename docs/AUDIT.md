@@ -160,11 +160,6 @@ Listed here so the gap is a documented decision, not an oversight. (Status
 as of the initial audit — see "Recommendations implemented" further down
 for what's since been built.)
 
-- **Structured/observability logging** — request IDs, correlation IDs
-  tying a log line back to a specific request across the DB and
-  application layers. Right now logging is just SQLAlchemy's own engine
-  echo plus uvicorn's access log plus the new catch-all handler's
-  `logger.exception`.
 - **Security headers middleware** (HSTS, `X-Content-Type-Options`, etc.) —
   standard hardening, cheap to add, just genuinely out of scope for this
   pass.
@@ -270,3 +265,46 @@ Live-verified against Neon: an admin appears in their own `GET /users`
 listing (expected), a self-edit attempt gets 403 with account left
 untouched, a self-delete attempt gets 403 with the account still active
 and able to authenticate afterward.
+
+### Structured/observability logging
+
+Every log line is now a JSON object (`timestamp`, `level`, `logger`,
+`message`, `request_id`, plus `exception` when there is one) instead of
+plain text. A new `RequestIDMiddleware` assigns a UUID to each request (or
+reuses one supplied via an incoming `X-Request-ID` header, so an ID
+survives a hop through an upstream proxy/gateway), stores it in a
+`contextvars.ContextVar`, and echoes it back on the response so a client
+or support ticket can hand back the exact ID to search logs for.
+
+The correlation isn't limited to application code: a single handler on
+the *root* logger, combined with a logging filter that reads the
+context var, means any logger in the process picks up the same
+request_id automatically just by propagating to root — including
+`sqlalchemy.engine.Engine`, so a specific SQL query line and the endpoint
+that issued it show up under the same ID without the DB layer knowing
+anything about HTTP requests.
+
+That did surface one real bug while live-verifying: both uvicorn and
+SQLAlchemy (`echo=True`) attach their own plain-text handler directly to
+their logger the first time they're used, which happens at import time,
+before app startup configures logging. Left alone, every DB query line
+was logged *twice* — once structured through root, once in SQLAlchemy's
+own plain-text format with no request_id attached. Fixed by stripping
+each library's self-attached handler during `configure_logging()` so
+everything funnels through the one handler on root.
+
+Live-verified against Neon: `/health` returns a generated `X-Request-ID`
+when the caller doesn't supply one, echoes back a caller-supplied one
+unchanged, and the server's JSON log stream showed the real Postgres
+handshake (`select pg_catalog.version()`, etc.) and every subsequent
+query for that request tagged with the same request_id as the
+`app.request` line that logged the response status and duration — with
+no duplicate plain-text lines remaining.
+
+One real gap this doesn't close: `uvicorn.access` lines log with
+`request_id: null`, because uvicorn's access logging happens at the ASGI
+server layer, outside the app's own middleware stack, before this
+process's context var is reachable. Not fixed — would mean patching
+uvicorn's own logging rather than adding application code, and the
+`app.request` line already carries the same information (method, path,
+status, duration) with a correct request_id.

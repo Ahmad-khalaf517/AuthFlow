@@ -1,4 +1,5 @@
 """AuthFlow FastAPI application entrypoint."""
+
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -11,8 +12,12 @@ from app.api.deps import get_db
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.exceptions import ServiceUnavailableError
+from app.core.logging import configure_logging
 from app.db.session import engine
 from app.middleware.error_handler import register_exception_handlers
+from app.middleware.request_context import RequestIDMiddleware
+
+configure_logging()
 
 
 @asynccontextmanager
@@ -41,6 +46,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# Added after CORSMiddleware so it ends up outermost (Starlette wraps in
+# reverse add order) -- every request gets a request_id, including
+# preflight OPTIONS requests CORSMiddleware handles itself.
+app.add_middleware(RequestIDMiddleware)
 
 app.include_router(api_router, prefix=settings.API_V1_PREFIX)
 
