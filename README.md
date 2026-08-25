@@ -66,7 +66,35 @@ AuthFlow/
 │   ├── requirements.txt
 │   ├── requirements-dev.txt
 │   └── .env.example
-├── frontend/                    Reserved for a future frontend client
+├── frontend/                    React 19 + TypeScript client (Vite)
+│   ├── src/
+│   │   ├── main.tsx              Entry point — router, query client, error boundary
+│   │   ├── App.tsx                Root layout (<Outlet /> + toaster)
+│   │   ├── routes/                 router.tsx — TanStack Router route tree
+│   │   ├── pages/                   Login, Register, Dashboard, Profile,
+│   │   │                            UsersManagement, NotFound
+│   │   ├── components/
+│   │   │   ├── auth/                 LoginForm, RegisterForm, ProtectedRoute
+│   │   │   ├── admin/                 UsersTable, UserDialog, StatsCards, ...
+│   │   │   ├── profile/                ProfileForm, ProfileHeader
+│   │   │   ├── layout/                  Header, Sidebar, MainLayout, AuthLayout
+│   │   │   └── ui/                       Button, Input, Dialog, Card, Toast, ...
+│   │   ├── api/                           auth.ts, users.ts, stats.ts, client.ts
+│   │   │                                  (fetch wrapper — attaches the bearer
+│   │   │                                  token, normalizes API errors)
+│   │   ├── hooks/                          useAuth, useCurrentUser, useUsers, ...
+│   │   │                                  (TanStack Query wrapping the api/ calls)
+│   │   ├── store/                           authStore.ts (Zustand + persisted
+│   │   │                                    JWT/user), uiStore.ts
+│   │   ├── types/                            auth.ts, user.ts, stats.ts, api.ts
+│   │   ├── utils/                             validation.ts (Zod schemas),
+│   │   │                                      constants.ts, formatters.ts
+│   │   └── lib/                                 queryClient.ts, cn.ts
+│   ├── public/
+│   ├── package.json                            pnpm — dev/build/lint/format
+│   ├── vite.config.ts
+│   ├── tailwind.config.ts
+│   └── .env.example                            VITE_API_BASE_URL
 ├── .github/workflows/            CI (ruff, black, mypy, pytest)
 ├── docker-compose.yml            Local Postgres + migrate + api
 └── README.md
@@ -204,6 +232,7 @@ alembic upgrade head
       endpoints — now blocked (403).
 
 Full spec implemented, 131 automated tests passing (`pytest`), 97% coverage,
-plus a live pass against the real Neon database after every phase. Not
-implemented: a frontend (`frontend/PROMPT.md` has a corrected build prompt
-ready, not yet built).
+plus a live pass against the real Neon database after every phase. The
+frontend (`frontend/`) implements the full feature list against this real
+API — see [`frontend/README.md`](frontend/README.md) for its own setup and
+notes.
