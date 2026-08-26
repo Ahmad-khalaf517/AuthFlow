@@ -30,7 +30,7 @@ export function getUserTableColumns(
       cell: ({ row }) => (
         <div>
           <p className="font-medium text-slate-700">{row.original.city}</p>
-          <p className="text-xs text-slate-400">Age {row.original.age}</p>
+          <p className="text-xs text-slate-600">Age {row.original.age}</p>
         </div>
       ),
     },

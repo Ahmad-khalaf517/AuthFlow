@@ -6,7 +6,8 @@ import { formatAverageAge } from '@/utils/formatters';
 
 function StatSkeleton() {
   return (
-    <div className="animate-pulse" aria-label="Loading statistic">
+    <div className="animate-pulse" role="status">
+      <span className="sr-only">Loading statistic</span>
       <div className="h-9 w-24 rounded-lg bg-slate-100" />
       <div className="mt-3 h-4 w-32 rounded bg-slate-100" />
     </div>

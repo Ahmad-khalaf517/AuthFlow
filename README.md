@@ -236,3 +236,5 @@ plus a live pass against the real Neon database after every phase. The
 frontend (`frontend/`) implements the full feature list against this real
 API — see [`frontend/README.md`](frontend/README.md) for its own setup and
 notes.
+The frontend also has nine Playwright E2E/accessibility tests covering both
+roles and critical browser journeys.
