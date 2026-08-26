@@ -14,6 +14,14 @@ USER appuser
 
 EXPOSE 8000
 
+# Lets `docker compose ps` / `depends_on: condition: service_healthy` / a
+# host's own orchestrator see real app health, not just "process started" --
+# uvicorn can be up while the app is still failing every request (e.g. it
+# can't reach the database). Uses the stdlib instead of curl/wget so no
+# extra package has to be installed into the image just for this.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"
+
 # Migrations are a deliberate separate step (`alembic upgrade head`), not
 # run automatically here -- baking them into the start command races on
 # every replica in a multi-instance deployment.

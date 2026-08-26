@@ -387,17 +387,18 @@ Postgres+`DB_SSL=True`, no connect args for Postgres+`DB_SSL=False`,
 and never attached for SQLite regardless — 3 new tests, 131 passing
 project-wide.
 
-**Honest limitation, unlike every other item on this list**: this
-environment has no Docker installed, so unlike every other
-recommendation in this document, the container image was never actually
-built and the compose stack was never actually run end-to-end — no
-`docker build`, no `docker-compose up`, no real proof the three services
-actually talk to each other. What *was* verified: the Dockerfile follows
-a standard, unremarkable pattern; `docker-compose.yml` parses as valid
-YAML with the intended service graph (checked programmatically); the
-`DB_SSL` fix it depends on is unit-tested in isolation; and the existing
-default path (`DB_SSL` unset, real Neon, no compose involved) was
-re-verified live to confirm the new setting didn't change any existing
-behavior. The docker-compose stack itself is unverified and should be
-smoke-tested (`docker-compose up`, confirm `/health` returns 200) before
-being relied on.
+**Update**: the local development sandbox this was originally built in
+has no Docker installed, so the image was never built and the compose
+stack never run *by hand* there. Rather than leave that as a standing
+gap, `.github/workflows/backend-ci.yml` gained a `docker` job:
+GitHub-hosted runners have Docker + Compose v2 preinstalled, so CI now
+runs `docker compose up --build`, polls the `api` container's own
+`HEALTHCHECK` (added to the Dockerfile for exactly this — `docker compose
+ps` and `depends_on: condition: service_healthy` both need it, and
+without it "the process started" and "the app actually works" are
+indistinguishable) until it reports healthy, curls `/health` over real
+HTTP, dumps container logs either way, then tears the stack down. That's
+a real `postgres` → `migrate` → `api` boot on every push, continuously —
+stronger evidence than a single one-off manual run, and it now catches a
+broken Dockerfile or compose file the same way any other regression
+would be caught.
