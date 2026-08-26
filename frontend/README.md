@@ -21,8 +21,42 @@ The app runs at `http://localhost:5173` by default.
 pnpm build
 pnpm lint
 pnpm format:check
+pnpm test
+pnpm test:unit
+pnpm test:integration
+pnpm test:coverage
 pnpm test:e2e
 ```
+
+## Unit and integration tests
+
+Vitest runs the fast frontend test suite in a jsdom browser-like environment. React Testing
+Library and `user-event` exercise components through accessible labels and roles, while MSW
+intercepts HTTP requests at the network boundary. These tests do not require the frontend or API
+servers to be running.
+
+For the complete beginner-friendly workflow, including when to run each test layer and how CI/CD
+automation fits together, see
+[`docs/FRONTEND_TESTING_AND_AUTOMATION.md`](../docs/FRONTEND_TESTING_AND_AUTOMATION.md).
+
+```bash
+pnpm test              # all Vitest tests once
+pnpm test:unit         # isolated functions, stores, hooks, and UI primitives
+pnpm test:integration  # forms/pages using React Query, Zustand, and mocked HTTP
+pnpm test:watch        # rerun affected tests while developing
+pnpm test:coverage     # enforce thresholds and write frontend/coverage/index.html
+```
+
+Test files are colocated with the source they verify:
+
+- `*.unit.test.ts(x)` covers one small module in isolation.
+- `*.integration.test.tsx` covers multiple frontend modules working together.
+- `e2e/*.spec.ts` covers the complete application in Chromium against the real API.
+
+Coverage thresholds are 80% for lines, statements, and functions and 75% for branches. Coverage
+is a safety net, not a quality score: important behavior and failure paths should be asserted even
+when a line has already been executed. Open `coverage/index.html` after a coverage run to inspect
+uncovered paths by file.
 
 ## End-to-end tests
 

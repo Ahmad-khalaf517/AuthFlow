@@ -1,6 +1,5 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getCurrentUser, updateCurrentUser } from '@/api/users';
-import { queryClient } from '@/lib/queryClient';
 import { useAuthStore } from '@/store/authStore';
 import type { UserUpdateInput } from '@/types/user';
 
@@ -19,6 +18,7 @@ export function useCurrentUser() {
 }
 
 export function useUpdateCurrentUser() {
+  const queryClient = useQueryClient();
   const setUser = useAuthStore((state) => state.setUser);
   return useMutation({
     mutationFn: (data: UserUpdateInput) => updateCurrentUser(data),

@@ -41,6 +41,7 @@ Thumbs.db
 # Frontend (future)
 frontend/node_modules/
 frontend/dist/
+frontend/coverage/
 frontend/build/
 frontend/coverage/
 frontend/.env
