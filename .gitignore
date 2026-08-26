@@ -28,7 +28,9 @@ htmlcov/
 .ruff_cache/
 
 # IDE
-.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
 .idea/
 
 # OS
