@@ -20,25 +20,25 @@ A production-style authentication and user management REST API built with FastAP
 - Rate limiting on login (brute-force protection)
 - Structured JSON logging with request-ID correlation
 - Security headers on every response
-- CI (GitHub Actions: ruff, black, mypy, pytest)
+- CI (GitHub Actions: backend checks plus frontend format, lint, Vitest coverage, and build)
 - Containerized (Dockerfile + docker-compose for local Postgres)
 
 ## Route summary
 
-| Method | Endpoint                     | Access        | Purpose                              |
-|--------|-------------------------------|---------------|---------------------------------------|
-| POST   | `/api/v1/auth/register`       | Public        | Register — always creates a `client` |
-| POST   | `/api/v1/auth/login`          | Public        | Log in, receive an access + refresh token |
-| POST   | `/api/v1/auth/refresh`        | Public        | Exchange a refresh token for a new pair (rotates it) |
-| GET    | `/api/v1/users/me`            | Authenticated | Get own profile                      |
-| PUT    | `/api/v1/users/me`            | Authenticated | Update own profile                   |
-| POST   | `/api/v1/users`               | Admin         | Create a `client` or `admin`         |
-| GET    | `/api/v1/users`               | Admin         | List users — paginated + filtered    |
-| PUT    | `/api/v1/users/{id}`          | Admin         | Update any user, including role      |
-| DELETE | `/api/v1/users/{id}`          | Admin         | Soft-delete a user                   |
-| GET    | `/api/v1/stats/count`         | Public        | Count of active users                |
-| GET    | `/api/v1/stats/average-age`   | Public        | Average age of active users          |
-| GET    | `/api/v1/stats/top-cities`    | Public        | Top 3 cities among active users      |
+| Method | Endpoint                    | Access        | Purpose                                              |
+| ------ | --------------------------- | ------------- | ---------------------------------------------------- |
+| POST   | `/api/v1/auth/register`     | Public        | Register — always creates a `client`                 |
+| POST   | `/api/v1/auth/login`        | Public        | Log in, receive an access + refresh token            |
+| POST   | `/api/v1/auth/refresh`      | Public        | Exchange a refresh token for a new pair (rotates it) |
+| GET    | `/api/v1/users/me`          | Authenticated | Get own profile                                      |
+| PUT    | `/api/v1/users/me`          | Authenticated | Update own profile                                   |
+| POST   | `/api/v1/users`             | Admin         | Create a `client` or `admin`                         |
+| GET    | `/api/v1/users`             | Admin         | List users — paginated + filtered                    |
+| PUT    | `/api/v1/users/{id}`        | Admin         | Update any user, including role                      |
+| DELETE | `/api/v1/users/{id}`        | Admin         | Soft-delete a user                                   |
+| GET    | `/api/v1/stats/count`       | Public        | Count of active users                                |
+| GET    | `/api/v1/stats/average-age` | Public        | Average age of active users                          |
+| GET    | `/api/v1/stats/top-cities`  | Public        | Top 3 cities among active users                      |
 
 ## Project structure
 
@@ -95,7 +95,7 @@ AuthFlow/
 │   ├── vite.config.ts
 │   ├── tailwind.config.ts
 │   └── .env.example                            VITE_API_BASE_URL
-├── .github/workflows/            CI (ruff, black, mypy, pytest)
+├── .github/workflows/            Backend and frontend CI checks
 ├── docker-compose.yml            Local Postgres + migrate + api
 └── README.md
 ```
@@ -150,10 +150,10 @@ http://localhost:8000/health.
 
 Use these development-only accounts to test role-based frontend behavior:
 
-| Role   | Email                         | Password    |
-|--------|-------------------------------|-------------|
-| Admin  | `maya@gmail.com`              | `password1` |
-| Client | `ahmadkhalaf517@gmail.com`    | `password1` |
+| Role   | Email                      | Password    |
+| ------ | -------------------------- | ----------- |
+| Admin  | `maya@gmail.com`           | `password1` |
+| Client | `ahmadkhalaf517@gmail.com` | `password1` |
 
 These credentials are intended only for local testing and must not be used in
 production.
@@ -231,10 +231,9 @@ alembic upgrade head
       admins could edit or soft-delete their own account through the admin
       endpoints — now blocked (403).
 
-Full spec implemented, 131 automated tests passing (`pytest`), 97% coverage,
-plus a live pass against the real Neon database after every phase. The
-frontend (`frontend/`) implements the full feature list against this real
-API — see [`frontend/README.md`](frontend/README.md) for its own setup and
-notes.
-The frontend also has nine Playwright E2E/accessibility tests covering both
-roles and critical browser journeys.
+Full backend spec and React frontend implemented. The backend has 131 automated
+tests passing (`pytest`) with 97% coverage. The frontend has Vitest unit/integration
+coverage plus nine Playwright E2E/accessibility tests covering both roles and
+critical browser journeys. The frontend implements the full feature list against
+the real API. See [`frontend/README.md`](frontend/README.md) for setup, test
+commands, and test-layer responsibilities.

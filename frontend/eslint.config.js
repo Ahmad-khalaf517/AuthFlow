@@ -5,7 +5,7 @@ import reactRefresh from 'eslint-plugin-react-refresh';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['dist', 'playwright-report', 'test-results', 'playwright/.auth'] },
+  { ignores: ['coverage', 'dist', 'playwright-report', 'test-results', 'playwright/.auth'] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ['**/*.{ts,tsx}'],
@@ -25,7 +25,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['e2e/**/*.ts', 'playwright.config.ts'],
+    files: ['e2e/**/*.ts', 'src/test/**/*.ts', 'playwright.config.ts', 'vitest.config.ts'],
     languageOptions: { globals: globals.node },
   },
 );
