@@ -23,7 +23,7 @@ MAX_PAGE_LIMIT = 100
 
 
 @router.get("/me", response_model=UserRead)
-async def read_current_user(current_user: User = Depends(get_current_user)) -> UserRead:
+async def read_current_user(current_user: User = Depends(get_current_user)) -> User:
     return current_user
 
 
@@ -32,7 +32,7 @@ async def update_current_user(
     user_in: UserUpdate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> UserRead:
+) -> User:
     return await user_service.update_own_profile(db, current_user, user_in)
 
 
@@ -42,7 +42,7 @@ async def update_current_user(
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_role(UserRole.ADMIN))],
 )
-async def create_user(user_in: UserCreateByAdmin, db: AsyncSession = Depends(get_db)) -> UserRead:
+async def create_user(user_in: UserCreateByAdmin, db: AsyncSession = Depends(get_db)) -> User:
     return await user_service.create_user_as_admin(db, user_in)
 
 
@@ -73,7 +73,11 @@ async def list_users(
     )
     total_pages = ceil(total / limit) if total else 0
     return UserListResponse(
-        page=page, limit=limit, total=total, total_pages=total_pages, users=users
+        page=page,
+        limit=limit,
+        total=total,
+        total_pages=total_pages,
+        users=[UserRead.model_validate(user) for user in users],
     )
 
 
@@ -83,7 +87,7 @@ async def admin_update_user(
     user_in: UserAdminUpdate,
     current_admin: User = Depends(require_role(UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
-) -> UserRead:
+) -> User:
     return await user_service.admin_update_user(db, user_id, user_in, current_admin=current_admin)
 
 
@@ -92,5 +96,5 @@ async def admin_delete_user(
     user_id: UUID,
     current_admin: User = Depends(require_role(UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
-) -> UserRead:
+) -> User:
     return await user_service.admin_soft_delete_user(db, user_id, current_admin=current_admin)
