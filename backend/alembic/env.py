@@ -1,15 +1,15 @@
 """Alembic migration environment (async-engine compatible)."""
 import asyncio
-import ssl
 from logging.config import fileConfig
 
 from alembic import context
 from sqlalchemy import pool
-from sqlalchemy.engine import Connection, make_url
+from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from app.core.config import settings
 from app.db.base import Base
+from app.db.connection import connect_args
 
 # Alembic Config object, provides access to values in alembic.ini.
 config = context.config
@@ -43,17 +43,15 @@ def do_run_migrations(connection: Connection) -> None:
 
 
 async def run_migrations_online() -> None:
-    # asyncpg doesn't understand libpq-style sslmode/channel_binding URL params
-    # (see app/db/session.py), so SSL is configured here via connect_args instead.
-    connect_args = {}
-    if make_url(settings.DATABASE_URL).get_backend_name() == "postgresql":
-        connect_args["ssl"] = ssl.create_default_context()
-
+    # asyncpg doesn't understand libpq-style sslmode/channel_binding URL
+    # params, so SSL is configured via connect_args instead -- through the
+    # same helper the application engine uses, so migrations and the app can
+    # never disagree about whether a given DATABASE_URL wants TLS.
     connectable = async_engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
-        connect_args=connect_args,
+        connect_args=connect_args(settings.DATABASE_URL, use_ssl=settings.DB_SSL),
     )
 
     async with connectable.connect() as connection:
