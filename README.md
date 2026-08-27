@@ -182,6 +182,20 @@ Run tests with a coverage report:
 pytest --cov=app --cov-report=term-missing
 ```
 
+Both of the above run against an in-memory SQLite database. To run the same
+suite against PostgreSQL — the only way `CREATE EXTENSION pg_trgm`, the
+`gin_trgm_ops` indexes and asyncpg itself actually execute — point
+`TEST_DATABASE_URL` at a throwaway database:
+
+```bash
+TEST_DATABASE_URL=postgresql+asyncpg://authflow:authflow@localhost:5432/authflow_test pytest
+```
+
+The schema is built by `alembic upgrade head` rather than `create_all`, so
+this also checks that the migrations produce the schema the app expects. It
+must not be the same database as `DATABASE_URL` — every test clears every
+table, and the suite refuses to start if the two match.
+
 Run a database migration (after changing a model):
 
 ```bash
