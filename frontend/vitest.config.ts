@@ -28,11 +28,14 @@ export default defineConfig({
         'src/routes/router.tsx',
         'src/types/**',
       ],
+      // Ratcheted to measured coverage minus ~2 points, so a real
+      // regression trips the gate instead of disappearing into slack.
+      // Measured at the time of writing: 94.05 / 93.03 / 91.23 / 83.2.
       thresholds: {
-        lines: 80,
-        statements: 80,
-        functions: 80,
-        branches: 75,
+        lines: 92,
+        statements: 91,
+        functions: 89,
+        branches: 81,
       },
     },
   },
