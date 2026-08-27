@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import ColumnElement, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -77,7 +77,7 @@ async def list_paginated(
     (covers "filter by city" and "search by name" with one mechanism);
     age and type are exact, since a partial match makes no sense for either.
     """
-    conditions = [User.is_deleted.is_(False)]
+    conditions: list[ColumnElement[bool]] = [User.is_deleted.is_(False)]
     if first_name is not None:
         conditions.append(User.first_name.ilike(f"%{first_name}%"))
     if last_name is not None:
@@ -126,4 +126,4 @@ async def top_cities_active(db: AsyncSession, *, limit: int = 3) -> list[tuple[s
         .order_by(func.count().desc())
         .limit(limit)
     )
-    return list(result.all())
+    return list(result.tuples().all())

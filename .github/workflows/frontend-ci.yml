@@ -10,6 +10,14 @@ on:
     paths:
       - "frontend/**"
       - ".github/workflows/frontend-ci.yml"
+  workflow_dispatch:
+
+# A force-push to a PR branch makes the in-flight run obsolete -- cancel it
+# rather than paying for both. Pushes to main are never cancelled: that run
+# is the record of whether a given main commit was green.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 defaults:
   run:
@@ -21,7 +29,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
+      # Pinned to the commit behind the v4 tag. A mutable tag on a
+      # third-party action is a supply-chain hole -- whoever can move the
+      # tag can run arbitrary code in this workflow. actions/* stay on tags
+      # since they're first-party.
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
         with:
           version: 11.18.0
           run_install: false
@@ -42,6 +54,16 @@ jobs:
 
       - name: Unit and integration tests with coverage
         run: pnpm test:coverage
+
+      - name: Upload coverage report
+        # always(), not on success: the report is most useful precisely
+        # when the coverage thresholds just failed the step above.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: frontend/coverage
+          retention-days: 7
 
       - name: Production build
         run: pnpm build

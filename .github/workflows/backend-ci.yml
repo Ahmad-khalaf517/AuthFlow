@@ -12,6 +12,14 @@ on:
       - "backend/**"
       - "docker-compose.yml"
       - ".github/workflows/backend-ci.yml"
+  workflow_dispatch:
+
+# A force-push to a PR branch makes the in-flight run obsolete -- cancel it
+# rather than paying for both. Pushes to main are never cancelled: that run
+# is the record of whether a given main commit was green.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 defaults:
   run:
@@ -38,16 +46,25 @@ jobs:
         run: black --check .
 
       - name: mypy
-        # Known pre-existing type errors in app/crud and app/api/v1/endpoints
-        # (ORM model vs. Pydantic response_model mismatches mypy can't see
-        # through) predate this workflow -- see docs/AUDIT.md. Non-blocking
-        # until those are cleaned up, so it still reports regressions without
-        # leaving CI red on day one for debt this step didn't introduce.
         run: mypy app
-        continue-on-error: true
 
       - name: pytest
-        run: pytest -q --cov=app --cov-report=term-missing
+        # --cov-fail-under sits ~2 points under measured coverage (98% at
+        # the time of writing) so it catches a real regression without
+        # tripping on rounding.
+        run: >-
+          pytest -q --cov=app --cov-report=term-missing
+          --cov-report=xml --cov-fail-under=95
+
+      - name: Upload coverage report
+        # always(), not on success: the coverage report is most useful
+        # precisely when --cov-fail-under just failed the step above.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/coverage.xml
+          retention-days: 7
 
   docker:
     # GitHub-hosted runners have Docker + Compose v2 preinstalled, which is
